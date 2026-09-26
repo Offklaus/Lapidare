@@ -13,6 +13,7 @@ import {
   destroySession,
   publicStaff,
   readSessionToken,
+  requireAdmin,
   requireStaff,
   sessionCookieOptions,
 } from '../lib/staffAuth.js';
@@ -254,3 +255,30 @@ function recordMessageSent(kind) {
 
 staffRouter.post('/bookings/:id/confirmation-sent', recordMessageSent('confirmation'));
 staffRouter.post('/bookings/:id/reminder-sent', recordMessageSent('reminder'));
+
+/* ---------- Profissionais (só admin) ---------- */
+
+/** GET /staff/professionals → [{ id, name, role, active }] (inclui inativas) */
+staffRouter.get('/professionals', requireAdmin, async (req, res) => {
+  const { rows } = await query('SELECT id, name, role, active FROM professionals ORDER BY sort, name');
+  res.json(rows);
+});
+
+/**
+ * PATCH /staff/professionals/:id  { name, role }
+ * Nome e função aparecem para as clientes no agendamento. → 200 com a profissional atualizada
+ */
+staffRouter.patch('/professionals/:id', requireAdmin, async (req, res) => {
+  const id = parseId(req.params.id, 'id', 'a profissional');
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\s+/g, ' ') : '';
+  const role = typeof req.body?.role === 'string' ? req.body.role.trim().replace(/\s+/g, ' ') : '';
+  if (name.length < 2 || name.length > 60) throw new HttpError(400, 'O nome precisa ter entre 2 e 60 caracteres.');
+  if (role.length > 80) throw new HttpError(400, 'A função pode ter no máximo 80 caracteres.');
+
+  const { rows } = await query(
+    'UPDATE professionals SET name = $2, role = $3 WHERE id = $1 RETURNING id, name, role, active',
+    [id, name, role],
+  );
+  if (!rows.length) throw new HttpError(404, 'Profissional não encontrada.');
+  res.json(rows[0]);
+});

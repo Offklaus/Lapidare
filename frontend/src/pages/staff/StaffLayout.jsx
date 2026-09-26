@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { Button, Facet } from '../../components/index.js';
 import { USE_MOCK } from '../../services/api.js';
@@ -51,6 +51,16 @@ export default function StaffLayout() {
               <span className="brand__sub">EQUIPE</span>
             </span>
           </Link>
+          {user?.role === 'admin' ? (
+            <nav className="site-nav staff-nav-links" aria-label="Área da equipe">
+              <NavLink to="/equipe" end className="site-nav__link">
+                Agenda
+              </NavLink>
+              <NavLink to="/equipe/profissionais" className="site-nav__link">
+                Profissionais
+              </NavLink>
+            </nav>
+          ) : null}
           {user ? (
             <div className="staff-user">
               <span className="staff-user__who">

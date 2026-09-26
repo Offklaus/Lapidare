@@ -25,6 +25,13 @@ export const markConfirmationSent = (id) =>
 export const markReminderSent = (id) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/reminder-sent`, { method: 'POST', ...withSession });
 
+/** GET /staff/professionals → [{ id, name, role, active }] (só admin) */
+export const getStaffProfessionals = () => request('/staff/professionals', withSession);
+
+/** PATCH /staff/professionals/:id { name, role } → profissional atualizada (só admin) */
+export const updateProfessional = (id, { name, role }) =>
+  request(`/staff/professionals/${encodeURIComponent(id)}`, { method: 'PATCH', body: { name, role }, ...withSession });
+
 /** PATCH /staff/bookings/:id/status { status: 'done' | 'no_show' | 'cancelled' } → agendamento atualizado */
 export const updateBookingStatus = (id, status) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status }, ...withSession });

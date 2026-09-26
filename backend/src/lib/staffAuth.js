@@ -64,3 +64,9 @@ export async function requireStaff(req, res, next) {
   req.staff = rows[0];
   next();
 }
+
+/** Middleware (depois de requireStaff): só perfil admin passa. */
+export function requireAdmin(req, res, next) {
+  if (req.staff?.role !== 'admin') throw new HttpError(403, 'Só a conta admin pode fazer isso.');
+  next();
+}
