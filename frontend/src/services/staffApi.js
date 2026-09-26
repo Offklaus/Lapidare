@@ -17,6 +17,10 @@ export const getStaffMe = () => request('/staff/me', withSession);
 export const getStaffBookings = ({ from, to, professionalId }) =>
   request('/staff/bookings', { params: { from, to, professionalId }, ...withSession });
 
+/** POST /staff/bookings/:id/confirmation-sent → agendamento atualizado (registra o envio da confirmação) */
+export const markConfirmationSent = (id) =>
+  request(`/staff/bookings/${encodeURIComponent(id)}/confirmation-sent`, { method: 'POST', ...withSession });
+
 /** PATCH /staff/bookings/:id/status { status: 'done' | 'no_show' | 'cancelled' } → agendamento atualizado */
 export const updateBookingStatus = (id, status) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status }, ...withSession });

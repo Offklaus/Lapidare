@@ -42,7 +42,7 @@ export default function BookingSuccessPage() {
     <div className="container success">
       <span className="t-caps t-accent">Agendamento feito</span>
       <h1 className="t-display-l">Prontinho{firstName ? `, ${firstName}` : ''}! Seu horário está reservado.</h1>
-      <p className="t-body t-muted">Enviamos a confirmação para o seu WhatsApp.</p>
+      <p className="t-body t-muted">Você vai receber a confirmação pelo WhatsApp.</p>
 
       {code ? (
         <div className="booking-code">

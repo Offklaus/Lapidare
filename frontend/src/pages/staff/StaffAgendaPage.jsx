@@ -3,7 +3,8 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 
 import { Badge, Button, BOOKING_STATUS } from '../../components/index.js';
 import { getProfessionals } from '../../services/api.js';
-import { getStaffBookings, updateBookingStatus } from '../../services/staffApi.js';
+import { getStaffBookings, markConfirmationSent, updateBookingStatus } from '../../services/staffApi.js';
+import { confirmationMessage, whatsappLink } from '../../lib/whatsapp.js';
 import { addDaysISO, cx, formatDuration, formatPhone, formatShortDate, toISODate } from '../../lib/format.js';
 import useAsync from '../../hooks/useAsync.js';
 import { Loading, LoadError } from '../booking/steps/StepStatus.jsx';
@@ -16,7 +17,7 @@ function statusBadge(booking) {
 }
 
 /** Um atendimento da agenda, com as ações que o servidor liberou (booking.actions). */
-function BookingRow({ booking, showProfessional, onChanged, onSessionExpired }) {
+function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSessionExpired }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
@@ -38,6 +39,22 @@ function BookingRow({ booking, showProfessional, onChanged, onSessionExpired }) 
   };
 
   const awaitingMark = actions.done && actions.noShow; // ainda ativo e o horário já começou
+
+  // Confirmação: o link abre o WhatsApp do salão com o texto pronto; o clique registra o envio.
+  const sentAt = booking.confirmationSentAt;
+  const confirmHref = whatsappLink(
+    customer.phone,
+    confirmationMessage(booking, { siteUrl: window.location.origin, cancelMinHours }),
+  );
+  const markSent = async () => {
+    setError('');
+    try {
+      onChanged(await markConfirmationSent(booking.id));
+    } catch (err) {
+      if (err.status === 401) onSessionExpired();
+      else setError(err.message || 'A mensagem abriu, mas não conseguimos registrar o envio. Tente de novo.');
+    }
+  };
 
   return (
     <article className={cx('staff-booking', `is-${booking.status}`)}>
@@ -62,6 +79,14 @@ function BookingRow({ booking, showProfessional, onChanged, onSessionExpired }) 
           {customer.email ? <a href={`mailto:${customer.email}`}>{customer.email}</a> : null}
           <span className="t-muted">Código {booking.code}</span>
         </span>
+        {actions.sendConfirmation && sentAt ? (
+          <span className="t-caption staff-booking__sent">
+            Confirmação enviada {formatShortDate(sentAt.slice(0, 10))} às {sentAt.slice(11, 16)}
+          </span>
+        ) : null}
+        {actions.sendConfirmation && !sentAt ? (
+          <span className="t-caption staff-booking__pending">Confirmação ainda não enviada</span>
+        ) : null}
         {awaitingMark ? (
           <span className="t-caption staff-booking__hint">O horário já começou: marque como concluído ou falta.</span>
         ) : null}
@@ -76,6 +101,17 @@ function BookingRow({ booking, showProfessional, onChanged, onSessionExpired }) 
       </div>
 
       <div className="staff-booking__actions">
+        {actions.sendConfirmation ? (
+          <a
+            className={cx('lp-btn lp-btn--sm', sentAt ? 'lp-btn--ghost' : 'lp-btn--primary')}
+            href={confirmHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={markSent}
+          >
+            {sentAt ? 'Reenviar confirmação' : 'Enviar confirmação'}
+          </a>
+        ) : null}
         {actions.done ? (
           <Button size="sm" variant="secondary" loading={busy === 'done'} disabled={!!busy} onClick={() => change('done')}>
             {booking.status === 'no_show' ? 'Marcar concluído' : 'Concluído'}
@@ -139,6 +175,8 @@ export default function StaffAgendaPage() {
   const days = [...new Set(bookings.map((b) => b.date))];
   const count = (...statuses) => bookings.filter((b) => statuses.includes(b.status)).length;
   const showProfessional = isAdmin && professionalId === 'all';
+  const cancelMinHours = agenda.data?.cancelMinHours ?? 24;
+  const toConfirm = bookings.filter((b) => b.actions.sendConfirmation && !b.confirmationSentAt && !b.started).length;
 
   const title =
     view === 'day'
@@ -208,6 +246,15 @@ export default function StaffAgendaPage() {
         </div>
       </dl>
 
+      {toConfirm ? (
+        <div className="notice notice--warning" role="status">
+          {toConfirm === 1
+            ? '1 cliente ainda não recebeu a confirmação pelo WhatsApp.'
+            : `${toConfirm} clientes ainda não receberam a confirmação pelo WhatsApp.`}{' '}
+          Use o botão “Enviar confirmação” em cada agendamento.
+        </div>
+      ) : null}
+
       {agenda.loading && !agenda.data ? <Loading>Carregando agenda…</Loading> : null}
       {agenda.error && agenda.error.status !== 401 ? <LoadError error={agenda.error} onRetry={agenda.reload} /> : null}
 
@@ -233,6 +280,7 @@ export default function StaffAgendaPage() {
                     key={b.id}
                     booking={b}
                     showProfessional={showProfessional}
+                    cancelMinHours={cancelMinHours}
                     onChanged={(next) => setUpdated((prev) => ({ ...prev, [next.id]: next }))}
                     onSessionExpired={sessionExpired}
                   />

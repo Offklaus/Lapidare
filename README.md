@@ -128,6 +128,7 @@ Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include
 | POST | `/staff/logout` | `204` e apaga a sessão |
 | GET | `/staff/me` | `{ user: { id, name, email, role: 'admin'\|'professional', professionalId } }` · `401` sem sessão |
 | GET | `/staff/bookings?from=&to=&professionalId=` | `{ from, to, bookings: [{ id, code, status, cancelledBy, date, time, endTime, started, customer: { name, phone, email }, service, professional, actions: { cancel, done, noShow } }] }` — profissional sempre vê só a própria agenda; período de até 31 dias |
+| POST | `/staff/bookings/:id/confirmation-sent` | registra que a equipe enviou a confirmação pelo WhatsApp (quando e quem) → agendamento atualizado com `confirmationSentAt` · `409` se não está mais ativo |
 | PATCH | `/staff/bookings/:id/status` | corpo `{ status: 'done'\|'no_show'\|'cancelled' }` → agendamento atualizado · cancelar só antes do horário começar; concluído/faltou só depois · `409` quando não é permitido |
 
 Contas são criadas pelo terminal (a senha é digitada sem aparecer):

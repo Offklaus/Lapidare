@@ -229,6 +229,10 @@
 
 .staff-booking__contact a { color: var(--accent); overflow-wrap: anywhere; }
 .staff-booking__hint { color: var(--warning); }
+.staff-booking__sent { color: var(--success); }
+.staff-booking__pending { color: var(--warning); font-weight: 500; }
+
+.notice--warning { background: var(--warning-soft); color: var(--warning); }
 .staff-booking__error { color: var(--danger); }
 
 .staff-booking__actions {

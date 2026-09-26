@@ -77,6 +77,7 @@ const STAFF_BOOKING_SELECT = `
          to_char(b.starts_at AT TIME ZONE $1, 'HH24:MI') AS time,
          to_char(b.ends_at AT TIME ZONE $1, 'HH24:MI') AS end_time,
          b.starts_at <= now() AS started,
+         to_char(b.confirmation_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS confirmation_sent_at,
          b.customer_name, b.customer_phone, b.customer_email,
          s.name AS service_name, s.duration_min, s.price_cents,
          p.id AS professional_id, p.name AS professional_name
@@ -96,6 +97,7 @@ function toStaffBooking(b) {
     time: b.time,
     endTime: b.end_time,
     started: b.started,
+    confirmationSentAt: b.confirmation_sent_at, // 'YYYY-MM-DDTHH:MM' no fuso do salão, ou null
     customer: { name: b.customer_name, phone: b.customer_phone, email: b.customer_email },
     service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
     professional: { id: b.professional_id, name: b.professional_name },
@@ -103,6 +105,7 @@ function toStaffBooking(b) {
       cancel: active && !b.started,
       done: (active || b.status === 'no_show') && b.started,
       noShow: (active || b.status === 'done') && b.started,
+      sendConfirmation: active,
     },
   };
 }
@@ -134,7 +137,8 @@ staffRouter.get('/bookings', async (req, res) => {
     [config.timezone, from, to, professionalId],
   );
 
-  res.json({ from, to, bookings: rows.map(toStaffBooking) });
+  // cancelMinHours vai junto para a mensagem de confirmação citar o prazo certo de cancelamento.
+  res.json({ from, to, cancelMinHours: config.cancelMinHours, bookings: rows.map(toStaffBooking) });
 });
 
 /** Em qual situação cada mudança de status é permitida. */
@@ -183,6 +187,35 @@ staffRouter.patch('/bookings/:id/status', async (req, res) => {
       throw new HttpError(409, 'Esse atendimento já começou. Marque como concluído ou como falta.');
     }
     throw new HttpError(409, 'Só dá para marcar concluído ou falta depois que o horário começar.');
+  }
+
+  const { rows } = await query(`${STAFF_BOOKING_SELECT} WHERE b.id = $2`, [config.timezone, id]);
+  res.json(toStaffBooking(rows[0]));
+});
+
+/**
+ * POST /staff/bookings/:id/confirmation-sent
+ * A equipe clicou em "Enviar confirmação" (link wa.me): registra quando e quem. Pode repetir (reenvio).
+ * → 200 com o agendamento atualizado · 404 não existe (ou é de outra profissional) · 409 não está mais ativo
+ */
+staffRouter.post('/bookings/:id/confirmation-sent', async (req, res) => {
+  const { id } = req.params;
+  if (!UUID_RE.test(id)) throw new HttpError(404, 'Agendamento não encontrado.');
+  const own = req.staff.role === 'professional' ? req.staff.professional_id : null;
+
+  const { rowCount } = await query(
+    `UPDATE bookings
+        SET confirmation_sent_at = now(), confirmation_sent_by = $2
+      WHERE id = $1
+        AND ($3::text IS NULL OR professional_id = $3)
+        AND status IN ('pending', 'confirmed')`,
+    [id, req.staff.id, own],
+  );
+
+  if (!rowCount) {
+    const { rows } = await query('SELECT professional_id FROM bookings WHERE id = $1', [id]);
+    if (!rows.length || (own && rows[0].professional_id !== own)) throw new HttpError(404, 'Agendamento não encontrado.');
+    throw new HttpError(409, 'Este agendamento não está mais ativo.');
   }
 
   const { rows } = await query(`${STAFF_BOOKING_SELECT} WHERE b.id = $2`, [config.timezone, id]);

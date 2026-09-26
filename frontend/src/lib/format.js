@@ -40,6 +40,11 @@ export function addDaysISO(iso, days) {
   return toISODate(dt);
 }
 
+/** '2026-09-29' → "terça-feira, 29 de setembro" (mensagens). */
+export function formatLongDate(iso) {
+  return parseISODate(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 /** '2026-09-29' → "ter, 29 de set". */
 export function formatShortDate(iso) {
   const dt = parseISODate(iso);
