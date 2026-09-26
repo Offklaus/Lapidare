@@ -78,6 +78,8 @@ const STAFF_BOOKING_SELECT = `
          to_char(b.ends_at AT TIME ZONE $1, 'HH24:MI') AS end_time,
          b.starts_at <= now() AS started,
          to_char(b.confirmation_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS confirmation_sent_at,
+         to_char(b.reminder_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS reminder_sent_at,
+         (b.starts_at AT TIME ZONE $1)::date - (now() AT TIME ZONE $1)::date AS days_until,
          b.customer_name, b.customer_phone, b.customer_email,
          s.name AS service_name, s.duration_min, s.price_cents,
          p.id AS professional_id, p.name AS professional_name
@@ -98,6 +100,8 @@ function toStaffBooking(b) {
     endTime: b.end_time,
     started: b.started,
     confirmationSentAt: b.confirmation_sent_at, // 'YYYY-MM-DDTHH:MM' no fuso do salão, ou null
+    reminderSentAt: b.reminder_sent_at,
+    daysUntil: b.days_until, // 0 = hoje, 1 = amanhã (calendário do salão)
     customer: { name: b.customer_name, phone: b.customer_phone, email: b.customer_email },
     service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
     professional: { id: b.professional_id, name: b.professional_name },
@@ -106,6 +110,8 @@ function toStaffBooking(b) {
       done: (active || b.status === 'no_show') && b.started,
       noShow: (active || b.status === 'done') && b.started,
       sendConfirmation: active,
+      // Lembrete: na véspera, ou no próprio dia se ainda não começou (caso tenha ficado para trás).
+      sendReminder: active && !b.started && (b.days_until === 0 || b.days_until === 1),
     },
   };
 }
@@ -194,30 +200,57 @@ staffRouter.patch('/bookings/:id/status', async (req, res) => {
 });
 
 /**
- * POST /staff/bookings/:id/confirmation-sent
- * A equipe clicou em "Enviar confirmação" (link wa.me): registra quando e quem. Pode repetir (reenvio).
- * → 200 com o agendamento atualizado · 404 não existe (ou é de outra profissional) · 409 não está mais ativo
+ * Mensagens de WhatsApp que a equipe envia pelo link wa.me do painel. O clique registra quando e quem.
+ * `when` = condição extra (SQL) para aceitar o registro; se usa o fuso do salão, ele entra como $4.
+ * `notAllowed` = mensagem quando a condição não é atendida.
  */
-staffRouter.post('/bookings/:id/confirmation-sent', async (req, res) => {
-  const { id } = req.params;
-  if (!UUID_RE.test(id)) throw new HttpError(404, 'Agendamento não encontrado.');
-  const own = req.staff.role === 'professional' ? req.staff.professional_id : null;
+const WHATSAPP_MESSAGES = {
+  confirmation: {
+    columns: ['confirmation_sent_at', 'confirmation_sent_by'],
+    when: null,
+    notAllowed: 'Este agendamento não está mais ativo.',
+  },
+  reminder: {
+    columns: ['reminder_sent_at', 'reminder_sent_by'],
+    when: `starts_at > now()
+           AND (starts_at AT TIME ZONE $4)::date - (now() AT TIME ZONE $4)::date BETWEEN 0 AND 1`,
+    notAllowed: 'O lembrete é para agendamentos de amanhã ou de hoje que ainda não começaram.',
+  },
+};
 
-  const { rowCount } = await query(
-    `UPDATE bookings
-        SET confirmation_sent_at = now(), confirmation_sent_by = $2
-      WHERE id = $1
-        AND ($3::text IS NULL OR professional_id = $3)
-        AND status IN ('pending', 'confirmed')`,
-    [id, req.staff.id, own],
-  );
+/**
+ * POST /staff/bookings/:id/confirmation-sent · POST /staff/bookings/:id/reminder-sent
+ * → 200 com o agendamento atualizado (pode repetir: reenvio)
+ * · 404 não existe (ou é de outra profissional) · 409 não está ativo ou fora da janela do lembrete
+ */
+function recordMessageSent(kind) {
+  const { columns: [sentAt, sentBy], when, notAllowed } = WHATSAPP_MESSAGES[kind];
 
-  if (!rowCount) {
-    const { rows } = await query('SELECT professional_id FROM bookings WHERE id = $1', [id]);
-    if (!rows.length || (own && rows[0].professional_id !== own)) throw new HttpError(404, 'Agendamento não encontrado.');
-    throw new HttpError(409, 'Este agendamento não está mais ativo.');
-  }
+  return async (req, res) => {
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) throw new HttpError(404, 'Agendamento não encontrado.');
+    const own = req.staff.role === 'professional' ? req.staff.professional_id : null;
 
-  const { rows } = await query(`${STAFF_BOOKING_SELECT} WHERE b.id = $2`, [config.timezone, id]);
-  res.json(toStaffBooking(rows[0]));
-});
+    const { rowCount } = await query(
+      `UPDATE bookings
+          SET ${sentAt} = now(), ${sentBy} = $2
+        WHERE id = $1
+          AND ($3::text IS NULL OR professional_id = $3)
+          AND status IN ('pending', 'confirmed')
+          ${when ? `AND ${when}` : ''}`,
+      when ? [id, req.staff.id, own, config.timezone] : [id, req.staff.id, own],
+    );
+
+    if (!rowCount) {
+      const { rows } = await query('SELECT professional_id FROM bookings WHERE id = $1', [id]);
+      if (!rows.length || (own && rows[0].professional_id !== own)) throw new HttpError(404, 'Agendamento não encontrado.');
+      throw new HttpError(409, notAllowed);
+    }
+
+    const { rows } = await query(`${STAFF_BOOKING_SELECT} WHERE b.id = $2`, [config.timezone, id]);
+    res.json(toStaffBooking(rows[0]));
+  };
+}
+
+staffRouter.post('/bookings/:id/confirmation-sent', recordMessageSent('confirmation'));
+staffRouter.post('/bookings/:id/reminder-sent', recordMessageSent('reminder'));

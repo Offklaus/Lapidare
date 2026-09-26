@@ -233,6 +233,12 @@
 .staff-booking__pending { color: var(--warning); font-weight: 500; }
 
 .notice--warning { background: var(--warning-soft); color: var(--warning); }
+
+.staff-reminder-notice {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
 .staff-booking__error { color: var(--danger); }
 
 .staff-booking__actions {

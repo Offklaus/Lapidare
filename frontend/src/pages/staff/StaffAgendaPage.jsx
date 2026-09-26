@@ -3,8 +3,11 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 
 import { Badge, Button, BOOKING_STATUS } from '../../components/index.js';
 import { getProfessionals } from '../../services/api.js';
-import { getStaffBookings, markConfirmationSent, updateBookingStatus } from '../../services/staffApi.js';
-import { confirmationMessage, whatsappLink } from '../../lib/whatsapp.js';
+import { getStaffBookings, markConfirmationSent, markReminderSent, updateBookingStatus } from '../../services/staffApi.js';
+import { confirmationMessage, reminderMessage, whatsappLink } from '../../lib/whatsapp.js';
+
+/** 'YYYY-MM-DDTHH:MM' → "sáb, 26 de set às 14:34" */
+const sentLabel = (stamp) => `${formatShortDate(stamp.slice(0, 10))} às ${stamp.slice(11, 16)}`;
 import { addDaysISO, cx, formatDuration, formatPhone, formatShortDate, toISODate } from '../../lib/format.js';
 import useAsync from '../../hooks/useAsync.js';
 import { Loading, LoadError } from '../booking/steps/StepStatus.jsx';
@@ -46,15 +49,20 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
     customer.phone,
     confirmationMessage(booking, { siteUrl: window.location.origin, cancelMinHours }),
   );
-  const markSent = async () => {
+  const reminderSentAt = booking.reminderSentAt;
+  const reminderHref = whatsappLink(customer.phone, reminderMessage(booking, { siteUrl: window.location.origin }));
+
+  const recordSent = (mark) => async () => {
     setError('');
     try {
-      onChanged(await markConfirmationSent(booking.id));
+      onChanged(await mark(booking.id));
     } catch (err) {
       if (err.status === 401) onSessionExpired();
       else setError(err.message || 'A mensagem abriu, mas não conseguimos registrar o envio. Tente de novo.');
     }
   };
+  const markSent = recordSent(markConfirmationSent);
+  const markReminder = recordSent(markReminderSent);
 
   return (
     <article className={cx('staff-booking', `is-${booking.status}`)}>
@@ -80,12 +88,18 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
           <span className="t-muted">Código {booking.code}</span>
         </span>
         {actions.sendConfirmation && sentAt ? (
-          <span className="t-caption staff-booking__sent">
-            Confirmação enviada {formatShortDate(sentAt.slice(0, 10))} às {sentAt.slice(11, 16)}
-          </span>
+          <span className="t-caption staff-booking__sent">Confirmação enviada {sentLabel(sentAt)}</span>
         ) : null}
         {actions.sendConfirmation && !sentAt ? (
           <span className="t-caption staff-booking__pending">Confirmação ainda não enviada</span>
+        ) : null}
+        {reminderSentAt ? (
+          <span className="t-caption staff-booking__sent">Lembrete enviado {sentLabel(reminderSentAt)}</span>
+        ) : null}
+        {actions.sendReminder && !reminderSentAt ? (
+          <span className="t-caption staff-booking__pending">
+            Lembrete ainda não enviado ({booking.daysUntil === 0 ? 'o horário é hoje' : 'o horário é amanhã'})
+          </span>
         ) : null}
         {awaitingMark ? (
           <span className="t-caption staff-booking__hint">O horário já começou: marque como concluído ou falta.</span>
@@ -101,6 +115,17 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
       </div>
 
       <div className="staff-booking__actions">
+        {actions.sendReminder ? (
+          <a
+            className={cx('lp-btn lp-btn--sm', reminderSentAt ? 'lp-btn--ghost' : 'lp-btn--primary')}
+            href={reminderHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={markReminder}
+          >
+            {reminderSentAt ? 'Reenviar lembrete' : 'Enviar lembrete'}
+          </a>
+        ) : null}
         {actions.sendConfirmation ? (
           <a
             className={cx('lp-btn lp-btn--sm', sentAt ? 'lp-btn--ghost' : 'lp-btn--primary')}
@@ -161,6 +186,17 @@ export default function StaffAgendaPage() {
     [date, to, professionalId, isAdmin],
   );
   const pros = useAsync(() => (isAdmin ? getProfessionals() : Promise.resolve([])), [isAdmin]);
+
+  // Lembretes pendentes de amanhã, para avisar mesmo com a agenda de hoje aberta.
+  const tomorrow = addDaysISO(today, 1);
+  const tomorrowAgenda = useAsync(
+    () => getStaffBookings({ from: tomorrow, to: tomorrow, professionalId: isAdmin ? professionalId : undefined }),
+    [tomorrow, professionalId, isAdmin],
+  );
+  const remindersToSend = (tomorrowAgenda.data?.bookings || []).filter(
+    (b) => b.actions.sendReminder && !b.reminderSentAt,
+  ).length;
+  const viewingTomorrow = view === 'day' && date === tomorrow;
 
   const sessionExpired = () => navigate('/equipe/entrar', { replace: true });
 
@@ -246,6 +282,28 @@ export default function StaffAgendaPage() {
         </div>
       </dl>
 
+      {remindersToSend ? (
+        <div className="notice notice--warning staff-reminder-notice" role="status">
+          <span>
+            {remindersToSend === 1
+              ? '1 cliente de amanhã ainda não recebeu o lembrete pelo WhatsApp.'
+              : `${remindersToSend} clientes de amanhã ainda não receberam o lembrete pelo WhatsApp.`}
+          </span>
+          {!viewingTomorrow ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setView('day');
+                setDate(tomorrow);
+              }}
+            >
+              Ver agenda de amanhã
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       {toConfirm ? (
         <div className="notice notice--warning" role="status">
           {toConfirm === 1
@@ -281,7 +339,10 @@ export default function StaffAgendaPage() {
                     booking={b}
                     showProfessional={showProfessional}
                     cancelMinHours={cancelMinHours}
-                    onChanged={(next) => setUpdated((prev) => ({ ...prev, [next.id]: next }))}
+                    onChanged={(next) => {
+                      setUpdated((prev) => ({ ...prev, [next.id]: next }));
+                      tomorrowAgenda.reload(); // atualiza o aviso de lembretes pendentes
+                    }}
                     onSessionExpired={sessionExpired}
                   />
                 ))}

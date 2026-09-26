@@ -27,3 +27,25 @@ export function confirmationMessage(booking, { siteUrl, cancelMinHours }) {
     'Te esperamos!',
   ].join('\n');
 }
+
+/**
+ * Lembrete da véspera (ou do próprio dia, se ficou para trás). booking.daysUntil: 1 = amanhã, 0 = hoje.
+ * Na véspera normalmente já passou o prazo de cancelamento pelo site, então pede para responder a mensagem.
+ */
+export function reminderMessage(booking, { siteUrl }) {
+  const firstName = booking.customer.name.trim().split(/\s+/)[0];
+  const trackUrl = `${siteUrl.replace(/\/$/, '')}/acompanhar/${booking.code}`;
+  const today = booking.daysUntil === 0;
+
+  return [
+    `Olá, ${firstName}! Passando para lembrar do seu horário ${today ? 'hoje' : 'amanhã'} na Lapidare Beauty:`,
+    '',
+    `${booking.service.name} com ${booking.professional.name}`,
+    `${formatLongDate(booking.date)}, às ${booking.time}`,
+    '',
+    'Se não puder vir, é só responder esta mensagem.',
+    `Detalhes do agendamento: ${trackUrl}`,
+    '',
+    today ? 'Te esperamos!' : 'Até amanhã!',
+  ].join('\n');
+}

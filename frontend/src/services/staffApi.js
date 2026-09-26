@@ -21,6 +21,10 @@ export const getStaffBookings = ({ from, to, professionalId }) =>
 export const markConfirmationSent = (id) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/confirmation-sent`, { method: 'POST', ...withSession });
 
+/** POST /staff/bookings/:id/reminder-sent → agendamento atualizado (registra o envio do lembrete) */
+export const markReminderSent = (id) =>
+  request(`/staff/bookings/${encodeURIComponent(id)}/reminder-sent`, { method: 'POST', ...withSession });
+
 /** PATCH /staff/bookings/:id/status { status: 'done' | 'no_show' | 'cancelled' } → agendamento atualizado */
 export const updateBookingStatus = (id, status) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status }, ...withSession });
