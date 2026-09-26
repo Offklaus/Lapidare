@@ -89,9 +89,11 @@ function slotsFor({ serviceId, professionalId = 'any', date }) {
   return [...byTime.values()].sort((a, b) => a.time.localeCompare(b.time));
 }
 
-export async function getServices() {
+export async function getServices(professionalId) {
   await delay();
-  return SERVICES.map((s) => ({ ...s }));
+  const pro = PROFESSIONALS.find((p) => p.id === professionalId);
+  const list = pro ? SERVICES.filter((s) => pro.specialties.includes(s.category)) : SERVICES;
+  return list.map((s) => ({ ...s }));
 }
 
 export async function getProfessionals(serviceId) {

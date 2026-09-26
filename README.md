@@ -95,7 +95,7 @@ frontend/src/
 │   ├── HomePage.jsx
 │   ├── BookingSuccessPage.jsx
 │   ├── NotFoundPage.jsx
-│   └── booking/             fluxo em 5 etapas (Serviço → Profissional → Data e horário → Seus dados → Confirmação)
+│   └── booking/             fluxo em 5 etapas (Profissional → Serviço → Data e horário → Seus dados → Confirmação)
 ├── services/
 │   ├── api.js               cliente HTTP do contrato abaixo
 │   └── mock.js              dados de exemplo no mesmo formato
@@ -107,7 +107,7 @@ frontend/src/
 
 | Método | Rota | Resposta |
 | --- | --- | --- |
-| GET | `/services` | `[{ id, category, name, description, duration, price }]` (duração em minutos, preço em reais) |
+| GET | `/services?professionalId=` | `[{ id, category, name, description, duration, price }]` (duração em minutos, preço em reais) · com `professionalId`, só os serviços dessa profissional; sem ele ou `any`, todos |
 | GET | `/professionals?serviceId=` | `[{ id, name, role, specialties, photo }]` |
 | GET | `/availability?serviceId=&professionalId=\|any&from=YYYY-MM-DD&days=14` | `{ days: [{ date, available }] }` |
 | GET | `/availability/slots?serviceId=&professionalId=&date=` | `[{ time: 'HH:MM', status: 'available'\|'booked'\|'blocked', professionalId }]` |

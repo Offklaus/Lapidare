@@ -1,8 +1,9 @@
 /* Estado do fluxo de agendamento. */
 
-export const STEPS = ['Serviço', 'Profissional', 'Data e horário', 'Seus dados', 'Confirmação'];
+/* A cliente escolhe a profissional primeiro e depois um dos serviços que ela faz. */
+export const STEPS = ['Profissional', 'Serviço', 'Data e horário', 'Seus dados', 'Confirmação'];
 
-export const STEP = { SERVICE: 0, PROFESSIONAL: 1, DATETIME: 2, CUSTOMER: 3, CONFIRM: 4 };
+export const STEP = { PROFESSIONAL: 0, SERVICE: 1, DATETIME: 2, CUSTOMER: 3, CONFIRM: 4 };
 
 export const ANY_PROFESSIONAL = {
   id: 'any',
@@ -11,7 +12,7 @@ export const ANY_PROFESSIONAL = {
 };
 
 export const initialState = {
-  step: STEP.SERVICE,
+  step: STEP.PROFESSIONAL,
   service: null,
   professional: null,
   professionals: [],
@@ -26,16 +27,17 @@ export const initialState = {
 
 export function bookingReducer(state, action) {
   switch (action.type) {
-    case 'SELECT_SERVICE':
-      if (state.service?.id === action.service.id) return state;
-      return { ...state, service: action.service, professional: null, professionals: [], date: null, time: null, slotProfessionalId: null };
-
     case 'SET_PROFESSIONALS':
       return { ...state, professionals: action.professionals };
 
+    // Outra profissional pode não fazer o serviço já escolhido: começa de novo a partir do serviço.
     case 'SELECT_PROFESSIONAL':
       if (state.professional?.id === action.professional.id) return state;
-      return { ...state, professional: action.professional, date: null, time: null, slotProfessionalId: null };
+      return { ...state, professional: action.professional, service: null, date: null, time: null, slotProfessionalId: null };
+
+    case 'SELECT_SERVICE':
+      if (state.service?.id === action.service.id) return state;
+      return { ...state, service: action.service, date: null, time: null, slotProfessionalId: null };
 
     case 'SELECT_DATE':
       if (state.date === action.date) return state;
@@ -75,10 +77,10 @@ export function bookingReducer(state, action) {
 /** Pode avançar a partir da etapa atual? (a etapa de dados valida ao clicar) */
 export function canAdvance(state) {
   switch (state.step) {
-    case STEP.SERVICE:
-      return !!state.service;
     case STEP.PROFESSIONAL:
       return !!state.professional;
+    case STEP.SERVICE:
+      return !!state.service;
     case STEP.DATETIME:
       return !!(state.date && state.time);
     case STEP.CUSTOMER:

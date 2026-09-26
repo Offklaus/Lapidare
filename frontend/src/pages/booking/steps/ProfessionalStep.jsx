@@ -6,9 +6,9 @@ import useAsync from '../../../hooks/useAsync.js';
 import { ANY_PROFESSIONAL } from '../bookingReducer.js';
 import { Loading, LoadError } from './StepStatus.jsx';
 
-/** Etapa 2: "Primeiro horário livre" + profissionais que fazem o serviço. */
-export default function ProfessionalStep({ serviceId, selectedId, onSelect, onLoaded }) {
-  const { data: professionals, loading, error, reload } = useAsync(() => getProfessionals(serviceId), [serviceId]);
+/** Etapa 1: "Primeiro horário livre" + todas as profissionais (o serviço vem depois). */
+export default function ProfessionalStep({ selectedId, onSelect, onLoaded }) {
+  const { data: professionals, loading, error, reload } = useAsync(() => getProfessionals(), []);
 
   useEffect(() => {
     if (professionals) onLoaded(professionals);

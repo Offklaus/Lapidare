@@ -14,9 +14,10 @@ import DateTimeStep from './steps/DateTimeStep.jsx';
 import CustomerStep from './steps/CustomerStep.jsx';
 import ConfirmStep from './steps/ConfirmStep.jsx';
 
+// Na mesma ordem de STEPS (bookingReducer.js).
 const COPY = [
-  { title: 'Escolha o serviço', lead: 'Selecione o que você quer fazer. Na próxima etapa mostramos quem atende.' },
-  { title: 'Escolha a profissional', lead: 'Mostramos só quem faz o serviço escolhido.' },
+  { title: 'Escolha a profissional', lead: 'Com quem você quer ser atendida? Sem preferência, escolha o primeiro horário livre.' },
+  { title: 'Escolha o serviço', lead: 'Mostramos só os serviços que a profissional escolhida faz.' },
   { title: 'Escolha seu horário', lead: 'Dias riscados não têm horários livres.' },
   { title: 'Seus dados', lead: 'Usamos seu WhatsApp para confirmar o horário.' },
   { title: 'Confira e confirme', lead: 'Seu horário fica reservado assim que você confirmar.' },
@@ -61,8 +62,8 @@ export default function BookingPage() {
   }, [professional, professionals, slotProfessionalId]);
 
   const summaryItems = [
-    { label: 'Serviço', value: service?.name || '—' },
     { label: 'Profissional', value: attendedBy || '—' },
+    { label: 'Serviço', value: service?.name || '—' },
     { label: 'Data', value: date ? formatShortDate(date) : '—' },
     { label: 'Horário', value: time || '—' },
     { label: 'Duração', value: service ? formatDuration(service.duration) : '—' },
@@ -121,7 +122,8 @@ export default function BookingPage() {
     </Button>
   );
 
-  const showAside = step >= STEP.PROFESSIONAL;
+  const isFirstStep = step === STEP.PROFESSIONAL;
+  const showAside = !isFirstStep; // resumo lateral a partir da 2ª etapa
 
   return (
     <div className="container booking">
@@ -139,16 +141,19 @@ export default function BookingPage() {
             <p className="t-body t-muted">{COPY[step].lead}</p>
           </header>
 
-          {step === STEP.SERVICE && (
-            <ServiceStep selectedId={service?.id} onSelect={(s) => dispatch({ type: 'SELECT_SERVICE', service: s })} />
-          )}
-
           {step === STEP.PROFESSIONAL && (
             <ProfessionalStep
-              serviceId={service.id}
               selectedId={professional?.id}
               onSelect={(p) => dispatch({ type: 'SELECT_PROFESSIONAL', professional: p })}
               onLoaded={(list) => dispatch({ type: 'SET_PROFESSIONALS', professionals: list })}
+            />
+          )}
+
+          {step === STEP.SERVICE && (
+            <ServiceStep
+              professionalId={professional.id}
+              selectedId={service?.id}
+              onSelect={(s) => dispatch({ type: 'SELECT_SERVICE', service: s })}
             />
           )}
 
@@ -185,7 +190,7 @@ export default function BookingPage() {
           )}
 
           <div className="booking__actions">
-            {step > STEP.SERVICE ? (
+            {!isFirstStep ? (
               <Button variant="secondary" onClick={back} disabled={submitting}>
                 Voltar
               </Button>
@@ -213,7 +218,7 @@ export default function BookingPage() {
       </div>
 
       <div className="mobile-bar">
-        {step > STEP.SERVICE ? (
+        {!isFirstStep ? (
           <Button variant="secondary" onClick={back} disabled={submitting}>
             Voltar
           </Button>

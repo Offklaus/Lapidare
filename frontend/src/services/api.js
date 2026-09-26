@@ -44,9 +44,10 @@ export async function request(path, { method = 'GET', params, body, credentials 
 }
 
 /** GET /services → [{ id, category, name, description, duration, price }] */
-export function getServices() {
-  if (USE_MOCK) return mock.getServices();
-  return request('/services');
+export function getServices(professionalId) {
+  if (USE_MOCK) return mock.getServices(professionalId);
+  // Com professionalId, só os serviços que essa profissional faz ('any' ou vazio = todos).
+  return request('/services', { params: { professionalId } });
 }
 
 /** GET /professionals?serviceId= → [{ id, name, role, specialties, photo }] */
