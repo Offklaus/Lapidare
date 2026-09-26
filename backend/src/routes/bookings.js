@@ -2,7 +2,9 @@ import { Router } from 'express';
 
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
+import { formatCode, generateCode, normalizeCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
+import { rateLimit } from '../lib/rateLimit.js';
 import { parseCustomer, parseDate, parseId, parseProfessionalId, parseTime } from '../lib/validate.js';
 import { computeSlots } from '../services/availability.js';
 import { loadSchedule } from '../services/schedule.js';
@@ -10,11 +12,35 @@ import { loadSchedule } from '../services/schedule.js';
 export const bookingsRouter = Router();
 
 const TAKEN = 'Esse horário acabou de ser reservado. Escolha outro abaixo.';
+const NOT_FOUND = 'Não encontramos agendamento com esse código. Confira as letras e os números.';
+
+const INSERT_BOOKING = `
+  INSERT INTO bookings (code, service_id, professional_id, starts_at, ends_at, status,
+                        customer_name, customer_phone, customer_email)
+  VALUES ($1, $2, $3,
+          ($4::date + $5::time) AT TIME ZONE $6,
+          ($4::date + $5::time + make_interval(mins => $7::int)) AT TIME ZONE $6,
+          'confirmed', $8, $9, $10)
+  RETURNING id, code, status, professional_id`;
+
+/** Insere com um código novo; se o código sorteado já existir (raríssimo), sorteia outro. */
+async function insertBooking(values) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const { rows } = await query(INSERT_BOOKING, [generateCode(), ...values]);
+      return rows[0];
+    } catch (err) {
+      if (err.code === '23505' && err.constraint === 'bookings_code_key') continue;
+      throw err;
+    }
+  }
+  throw new Error('Não foi possível gerar um código de agendamento único.');
+}
 
 /**
  * POST /bookings
  * { serviceId, professionalId | 'any', date: 'YYYY-MM-DD', time: 'HH:MM', customer: { name, phone, email? } }
- * → 201 { id, status, professionalId } · 409 se o horário não está mais livre
+ * → 201 { id, code, status, professionalId } · 409 se o horário não está mais livre
  */
 bookingsRouter.post('/', async (req, res) => {
   const body = req.body || {};
@@ -33,22 +59,60 @@ bookingsRouter.post('/', async (req, res) => {
   if (slot.status !== 'available') throw new HttpError(409, TAKEN);
 
   try {
-    const { rows } = await query(
-      `INSERT INTO bookings (service_id, professional_id, starts_at, ends_at, status,
-                             customer_name, customer_phone, customer_email)
-       VALUES ($1, $2,
-               ($3::date + $4::time) AT TIME ZONE $5,
-               ($3::date + $4::time + make_interval(mins => $6::int)) AT TIME ZONE $5,
-               'confirmed', $7, $8, $9)
-       RETURNING id, status, professional_id`,
-      [service.id, slot.professionalId, date, time, config.timezone, service.duration,
-        customer.name, customer.phone, customer.email],
-    );
-    const booking = rows[0];
-    res.status(201).json({ id: booking.id, status: booking.status, professionalId: booking.professional_id });
+    const booking = await insertBooking([
+      service.id, slot.professionalId, date, time, config.timezone, service.duration,
+      customer.name, customer.phone, customer.email,
+    ]);
+    res.status(201).json({
+      id: booking.id,
+      code: formatCode(booking.code),
+      status: booking.status,
+      professionalId: booking.professional_id,
+    });
   } catch (err) {
     // 23P01 = bookings_no_overlap: outra cliente confirmou o mesmo horário no mesmo instante.
     if (err.code === '23P01') throw new HttpError(409, TAKEN);
     throw err;
   }
 });
+
+/**
+ * GET /bookings/:code → { code, status, date, time, isPast, customerFirstName, service, professional }
+ * Quem tem o código vê o agendamento, então não devolve telefone nem e-mail.
+ * Limite de consultas por IP para ninguém sair testando códigos.
+ */
+bookingsRouter.get(
+  '/:code',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 30, message: 'Muitas consultas seguidas. Espere alguns minutos e tente de novo.' }),
+  async (req, res) => {
+    const code = normalizeCode(req.params.code);
+    if (!code) throw new HttpError(404, NOT_FOUND);
+
+    const { rows } = await query(
+      `SELECT b.code, b.status, b.customer_name,
+              to_char(b.starts_at AT TIME ZONE $2, 'YYYY-MM-DD') AS date,
+              to_char(b.starts_at AT TIME ZONE $2, 'HH24:MI') AS time,
+              b.ends_at < now() AS is_past,
+              s.name AS service_name, s.duration_min, s.price_cents,
+              p.name AS professional_name
+         FROM bookings b
+         JOIN services s ON s.id = b.service_id
+         JOIN professionals p ON p.id = b.professional_id
+        WHERE b.code = $1`,
+      [code, config.timezone],
+    );
+    if (!rows.length) throw new HttpError(404, NOT_FOUND);
+
+    const b = rows[0];
+    res.json({
+      code: formatCode(b.code),
+      status: b.status,
+      date: b.date,
+      time: b.time,
+      isPast: b.is_past,
+      customerFirstName: b.customer_name.split(/\s+/)[0],
+      service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
+      professional: { name: b.professional_name },
+    });
+  },
+);

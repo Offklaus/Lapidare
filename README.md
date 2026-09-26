@@ -82,7 +82,7 @@ VITE_USE_MOCK=false
 ```
 frontend/src/
 ├── main.jsx                 entrada: router + estilos
-├── App.jsx                  rotas: /, /agendar, /agendamento-confirmado
+├── App.jsx                  rotas: /, /agendar, /agendamento-confirmado, /acompanhar/:code
 ├── styles/
 │   ├── tokens.css           cores (claro Marfim / escuro Oliva), fontes, espaçamentos, raios, sombras
 │   ├── global.css           base e estilos tipográficos (.t-display-xl, .t-caps, .t-body…)
@@ -111,7 +111,8 @@ frontend/src/
 | GET | `/professionals?serviceId=` | `[{ id, name, role, specialties, photo }]` |
 | GET | `/availability?serviceId=&professionalId=\|any&from=YYYY-MM-DD&days=14` | `{ days: [{ date, available }] }` |
 | GET | `/availability/slots?serviceId=&professionalId=&date=` | `[{ time: 'HH:MM', status: 'available'\|'booked'\|'blocked', professionalId }]` |
-| POST | `/bookings` | `201 { id, status: 'confirmed'\|'pending', professionalId }` · `409` se o horário foi reservado enquanto a cliente escolhia |
+| POST | `/bookings` | `201 { id, code: 'K7QM-4XZP', status: 'confirmed'\|'pending', professionalId }` · `409` se o horário foi reservado enquanto a cliente escolhia |
+| GET | `/bookings/:code` | `{ code, status, date, time, isPast, customerFirstName, service: { name, duration, price }, professional: { name } }` · `404` se o código não existe · `429` após 30 consultas em 10 min do mesmo IP |
 | GET | `/health` | `{ ok: true }` |
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.

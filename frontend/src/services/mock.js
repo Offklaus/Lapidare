@@ -128,6 +128,7 @@ export async function createBooking({ serviceId, professionalId, date, time, cus
   }
   const booking = {
     id: `bk_${Date.now().toString(36)}`,
+    code: randomCode(),
     serviceId,
     professionalId,
     date,
@@ -136,5 +137,38 @@ export async function createBooking({ serviceId, professionalId, date, time, cus
     status: 'confirmed',
   };
   bookings.push(booking);
-  return { id: booking.id, status: booking.status };
+  return { id: booking.id, code: booking.code, status: booking.status };
+}
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function randomCode() {
+  const c = Array.from({ length: 8 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
+  return `${c.slice(0, 4)}-${c.slice(4)}`;
+}
+
+export async function getBooking(code) {
+  await delay();
+  const booking = bookings.find((b) => b.code === code);
+  if (!booking) {
+    const err = new Error('Não encontramos agendamento com esse código. Confira as letras e os números.');
+    err.status = 404;
+    throw err;
+  }
+  const service = SERVICES.find((s) => s.id === booking.serviceId);
+  const pro = PROFESSIONALS.find((p) => p.id === booking.professionalId);
+  const end = parseISODate(booking.date);
+  end.setHours(0, 0, 0, 0);
+  const [h, m] = booking.time.split(':').map(Number);
+  end.setMinutes(h * 60 + m + service.duration);
+  return {
+    code: booking.code,
+    status: booking.status,
+    date: booking.date,
+    time: booking.time,
+    isPast: end < new Date(),
+    customerFirstName: booking.customer.name.split(' ')[0],
+    service: { name: service.name, duration: service.duration, price: service.price },
+    professional: { name: pro.name },
+  };
 }

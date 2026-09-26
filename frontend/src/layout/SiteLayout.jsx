@@ -54,6 +54,9 @@ export default function SiteLayout() {
             <NavLink to="/agendar" className="site-nav__link">
               Agendar
             </NavLink>
+            <NavLink to="/acompanhar" className="site-nav__link">
+              Meu agendamento
+            </NavLink>
             <ThemeToggle />
           </nav>
         </div>

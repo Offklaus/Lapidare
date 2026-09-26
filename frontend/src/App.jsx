@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage.jsx';
 import BookingPage from './pages/booking/BookingPage.jsx';
 import BookingSuccessPage from './pages/BookingSuccessPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import TrackBookingPage from './pages/TrackBookingPage.jsx';
 
 export default function App() {
   return (
@@ -13,6 +14,8 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="agendar" element={<BookingPage />} />
         <Route path="agendamento-confirmado" element={<BookingSuccessPage />} />
+        <Route path="acompanhar" element={<TrackBookingPage />} />
+        <Route path="acompanhar/:code" element={<TrackBookingPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

@@ -53,6 +53,12 @@ export function formatPhone(value) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+/** Código do agendamento: 'k7qm4xzp' → 'K7QM-4XZP'. Serve também de máscara enquanto a cliente digita. */
+export function formatBookingCode(value = '') {
+  const c = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+}
+
 /** Iniciais para o avatar: "Ana Paula Souza" → "AP". */
 export function initials(name = '?') {
   return name

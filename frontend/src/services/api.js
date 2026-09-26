@@ -65,8 +65,14 @@ export function getSlots({ serviceId, professionalId = 'any', date }) {
   return request('/availability/slots', { params: { serviceId, professionalId, date } });
 }
 
-/** POST /bookings → 201 { id, status } · 409 se o horário foi reservado nesse meio-tempo */
+/** POST /bookings → 201 { id, code, status } · 409 se o horário foi reservado nesse meio-tempo */
 export function createBooking(payload) {
   if (USE_MOCK) return mock.createBooking(payload);
   return request('/bookings', { method: 'POST', body: payload });
+}
+
+/** GET /bookings/:code → { code, status, date, time, isPast, customerFirstName, service, professional } · 404 se não existe */
+export function getBooking(code) {
+  if (USE_MOCK) return mock.getBooking(code);
+  return request(`/bookings/${encodeURIComponent(code)}`);
 }

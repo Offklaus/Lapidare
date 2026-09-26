@@ -355,3 +355,103 @@
   max-width: 440px;
   text-align: left;
 }
+
+.success__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* Código do agendamento na confirmação */
+.booking-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-6);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.booking-code__value {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  /* Cormorant usa algarismos "old-style" por padrão; em código, algarismos alinhados leem melhor */
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Código no título do resumo (Agendamento K7QM-4XZP) */
+.track__result .lp-summary__title {
+  font-variant-numeric: lining-nums;
+}
+
+/* Acompanhar agendamento */
+.track {
+  max-width: 640px;
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.track__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.track__form {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.track__form .lp-field { flex: 1; }
+
+.track__form .lp-field__input {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* alinha o botão com o campo (rótulo 16px + gap 4px) e com a mesma altura */
+.track__form > .lp-btn {
+  margin-top: 20px;
+  min-height: 50px;
+}
+
+.track__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 560px) {
+  /* Celular: logo na primeira linha, menu inteiro na segunda */
+  .site-header__inner {
+    flex-wrap: wrap;
+    row-gap: 0;
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-2);
+    min-height: 0;
+  }
+
+  .site-nav {
+    width: 100%;
+    gap: var(--space-1);
+    margin-left: calc(-1 * var(--space-3));
+  }
+
+  .site-nav__link { white-space: nowrap; }
+
+  .theme-toggle { margin-left: auto; }
+
+  .track__form { flex-direction: column; align-items: stretch; }
+  .track__form > .lp-btn { margin-top: 0; }
+}
