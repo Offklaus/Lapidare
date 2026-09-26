@@ -120,6 +120,7 @@ function BookingResult({ lookup, onCancelled }) {
     );
   }
   if (lookup.error) return <LoadError error={lookup.error} onRetry={lookup.reload} />;
+  if (!lookup.data) return <Loading>Buscando seu agendamento…</Loading>;
 
   const booking = lookup.data;
   const statusKey = displayStatus(booking);
