@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { Badge, BookingSummary, Button, TextField, BOOKING_STATUS } from '../components/index.js';
-import { getBooking } from '../services/api.js';
+import { cancelBooking, getBooking } from '../services/api.js';
 import { formatBookingCode, formatDuration, formatShortDate } from '../lib/format.js';
 import useAsync from '../hooks/useAsync.js';
 import { Loading, LoadError } from './booking/steps/StepStatus.jsx';
 
 const NOTES = {
-  confirmed: 'Te esperamos! Se precisar remarcar ou cancelar, fale com a gente.',
+  confirmed: 'Te esperamos!',
   pending: 'Estamos confirmando seu horário. A confirmação chega pelo WhatsApp.',
   cancelled: 'Este agendamento foi cancelado. Se quiser, escolha um novo horário.',
   done: 'Atendimento realizado. Esperamos te ver de novo em breve.',
@@ -20,7 +20,94 @@ function displayStatus(booking) {
   return booking.status;
 }
 
-function BookingResult({ lookup }) {
+/** Cancelar pelo código: pede os 4 últimos dígitos do WhatsApp para confirmar que é a cliente. */
+function CancelBooking({ booking, onCancelled }) {
+  const [open, setOpen] = useState(false);
+  const [digits, setDigits] = useState('');
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const { allowed, deadline, minHours } = booking.cancellation;
+  const deadlineText = `${formatShortDate(deadline.date)} às ${deadline.time}`;
+
+  if (!allowed) {
+    return (
+      <div className="notice notice--neutral">
+        Faltam menos de {minHours} h para o seu horário, então o cancelamento pelo site já encerrou. Para cancelar ou
+        remarcar, fale com a gente.
+      </div>
+    );
+  }
+
+  const close = () => {
+    setOpen(false);
+    setDigits('');
+    setError('');
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (digits.length !== 4) {
+      setError('Digite os 4 últimos dígitos do WhatsApp usado no agendamento.');
+      return;
+    }
+    setSending(true);
+    setError('');
+    try {
+      await cancelBooking(booking.code, digits);
+      onCancelled();
+    } catch (err) {
+      setError(err.message || 'Não conseguimos cancelar agora. Tente de novo em instantes.');
+      setSending(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div className="track__cancel">
+        <p className="t-body-sm t-muted">Não vai poder vir? Você pode cancelar pelo site até {deadlineText}.</p>
+        <div>
+          <Button variant="danger" onClick={() => setOpen(true)}>
+            Cancelar agendamento
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form className="track__cancel track__cancel--open" onSubmit={handleSubmit} noValidate>
+      <h2 className="t-title">Cancelar este agendamento?</h2>
+      <p className="t-body-sm t-muted">
+        Para confirmar que é você, digite os 4 últimos dígitos do WhatsApp usado no agendamento. O horário será liberado
+        para outras clientes.
+      </p>
+      <TextField
+        label="4 últimos dígitos do WhatsApp"
+        inputMode="numeric"
+        autoComplete="off"
+        autoFocus
+        maxLength={4}
+        placeholder="0000"
+        value={digits}
+        error={error}
+        onChange={(e) => {
+          setDigits(e.target.value.replace(/\D/g, '').slice(0, 4));
+          setError('');
+        }}
+      />
+      <div className="track__cancel-actions">
+        <Button variant="danger" type="submit" loading={sending}>
+          Confirmar cancelamento
+        </Button>
+        <Button variant="ghost" onClick={close} disabled={sending}>
+          Manter agendamento
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function BookingResult({ lookup, onCancelled }) {
   if (lookup.loading) return <Loading>Buscando seu agendamento…</Loading>;
 
   if (lookup.error?.status === 404) {
@@ -36,6 +123,7 @@ function BookingResult({ lookup }) {
   const booking = lookup.data;
   const statusKey = displayStatus(booking);
   const status = BOOKING_STATUS[statusKey] || BOOKING_STATUS.confirmed;
+  const active = statusKey === 'confirmed' || statusKey === 'pending';
 
   return (
     <section className="track__result" aria-live="polite">
@@ -53,6 +141,7 @@ function BookingResult({ lookup }) {
         note={NOTES[statusKey]}
         action={<Badge tone={status.tone}>{status.label}</Badge>}
       />
+      {active && booking.cancellation ? <CancelBooking booking={booking} onCancelled={onCancelled} /> : null}
     </section>
   );
 }
@@ -62,9 +151,11 @@ export default function TrackBookingPage() {
   const navigate = useNavigate();
   const [input, setInput] = useState(formatBookingCode(codeParam || ''));
   const [inputError, setInputError] = useState('');
+  const [justCancelled, setJustCancelled] = useState(false);
 
   useEffect(() => {
     setInput(formatBookingCode(codeParam || ''));
+    setJustCancelled(false);
   }, [codeParam]);
 
   const lookup = useAsync(
@@ -80,8 +171,14 @@ export default function TrackBookingPage() {
       return;
     }
     setInputError('');
+    setJustCancelled(false);
     if (code === formatBookingCode(codeParam || '')) lookup.reload();
     else navigate(`/acompanhar/${code}`);
+  };
+
+  const handleCancelled = () => {
+    setJustCancelled(true);
+    lookup.reload();
   };
 
   return (
@@ -110,7 +207,13 @@ export default function TrackBookingPage() {
         <Button type="submit">Buscar</Button>
       </form>
 
-      {codeParam ? <BookingResult lookup={lookup} /> : null}
+      {justCancelled ? (
+        <div className="notice notice--success" role="status">
+          Agendamento cancelado. O horário foi liberado. Quando quiser, é só agendar de novo.
+        </div>
+      ) : null}
+
+      {codeParam ? <BookingResult lookup={lookup} onCancelled={handleCancelled} /> : null}
     </div>
   );
 }

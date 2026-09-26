@@ -2,6 +2,7 @@ import { cx } from '../lib/format.js';
 
 /**
  * variant: 'primary' (avançar) | 'action' (confirmar, uma por tela) | 'secondary' (voltar) | 'ghost' (link discreto)
+ *          | 'danger' (ação destrutiva, ex.: cancelar agendamento)
  * size: 'sm' | 'md' | 'lg'
  */
 export default function Button({

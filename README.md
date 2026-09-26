@@ -112,7 +112,8 @@ frontend/src/
 | GET | `/availability?serviceId=&professionalId=\|any&from=YYYY-MM-DD&days=14` | `{ days: [{ date, available }] }` |
 | GET | `/availability/slots?serviceId=&professionalId=&date=` | `[{ time: 'HH:MM', status: 'available'\|'booked'\|'blocked', professionalId }]` |
 | POST | `/bookings` | `201 { id, code: 'K7QM-4XZP', status: 'confirmed'\|'pending', professionalId }` · `409` se o horário foi reservado enquanto a cliente escolhia |
-| GET | `/bookings/:code` | `{ code, status, date, time, isPast, customerFirstName, service: { name, duration, price }, professional: { name } }` · `404` se o código não existe · `429` após 30 consultas em 10 min do mesmo IP |
+| GET | `/bookings/:code` | `{ code, status, date, time, isPast, customerFirstName, service: { name, duration, price }, professional: { name }, cancellation: { allowed, deadline: { date, time }, minHours } }` · `404` se o código não existe · `429` após 30 consultas em 10 min do mesmo IP |
+| POST | `/bookings/:code/cancel` | corpo `{ phoneLast4 }` (4 últimos dígitos do WhatsApp) → `200` com o agendamento atualizado · `403` dígitos não conferem · `409` já cancelado, já aconteceu ou a menos de `CANCEL_MIN_HOURS` do horário · `429` após 5 tentativas por código por hora ou 10 por IP em 15 min |
 | GET | `/health` | `{ ok: true }` |
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.

@@ -432,6 +432,35 @@
   gap: var(--space-4);
 }
 
+.track__cancel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.track__cancel--open {
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.track__cancel--open .lp-field { max-width: 240px; }
+
+.track__cancel--open .lp-field__input {
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+
+.track__cancel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.notice--success { background: var(--success-soft); color: var(--success); }
+
 @media (max-width: 560px) {
   /* Celular: logo na primeira linha, menu inteiro na segunda */
   .site-header__inner {

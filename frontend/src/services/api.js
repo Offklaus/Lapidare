@@ -76,3 +76,9 @@ export function getBooking(code) {
   if (USE_MOCK) return mock.getBooking(code);
   return request(`/bookings/${encodeURIComponent(code)}`);
 }
+
+/** POST /bookings/:code/cancel { phoneLast4 } → agendamento atualizado · 403 dígitos não conferem · 409 fora do prazo */
+export function cancelBooking(code, phoneLast4) {
+  if (USE_MOCK) return mock.cancelBooking(code, phoneLast4);
+  return request(`/bookings/${encodeURIComponent(code)}/cancel`, { method: 'POST', body: { phoneLast4 } });
+}

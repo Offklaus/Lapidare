@@ -17,6 +17,8 @@
 .lp-btn--action:hover:not(:disabled) { background:var(--action-hover); }
 .lp-btn--secondary { background:transparent; color:var(--ink); border-color:var(--line-strong); }
 .lp-btn--secondary:hover:not(:disabled) { background:var(--surface-sunken); }
+.lp-btn--danger { background:transparent; color:var(--danger); border-color:var(--danger); }
+.lp-btn--danger:hover:not(:disabled) { background:var(--danger-soft); }
 .lp-btn--ghost { background:transparent; color:var(--accent); padding-left:var(--space-2); padding-right:var(--space-2); }
 .lp-btn--ghost:hover:not(:disabled) { text-decoration:underline; text-underline-offset:4px; }
 .lp-spin { width:14px; height:14px; border-radius:50%; border:2px solid currentColor; border-right-color:transparent; animation:lp-spin .8s linear infinite; }

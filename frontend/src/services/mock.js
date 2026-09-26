@@ -155,12 +155,20 @@ export async function getBooking(code) {
     err.status = 404;
     throw err;
   }
+  return publicBooking(booking);
+}
+
+const CANCEL_MIN_HOURS = 24;
+
+function publicBooking(booking) {
   const service = SERVICES.find((s) => s.id === booking.serviceId);
   const pro = PROFESSIONALS.find((p) => p.id === booking.professionalId);
-  const end = parseISODate(booking.date);
-  end.setHours(0, 0, 0, 0);
   const [h, m] = booking.time.split(':').map(Number);
-  end.setMinutes(h * 60 + m + service.duration);
+  const start = parseISODate(booking.date);
+  start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + service.duration * 60000);
+  const deadline = new Date(start.getTime() - CANCEL_MIN_HOURS * 3600000);
+  const active = booking.status === 'confirmed' || booking.status === 'pending';
   return {
     code: booking.code,
     status: booking.status,
@@ -170,5 +178,30 @@ export async function getBooking(code) {
     customerFirstName: booking.customer.name.split(' ')[0],
     service: { name: service.name, duration: service.duration, price: service.price },
     professional: { name: pro.name },
+    cancellation: {
+      allowed: active && new Date() <= deadline,
+      deadline: {
+        date: toISODate(deadline),
+        time: `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`,
+      },
+      minHours: CANCEL_MIN_HOURS,
+    },
   };
+}
+
+export async function cancelBooking(code, phoneLast4) {
+  await delay(500);
+  const booking = bookings.find((b) => b.code === code);
+  const fail = (status, message) => Object.assign(new Error(message), { status });
+  if (!booking) throw fail(404, 'Não encontramos agendamento com esse código. Confira as letras e os números.');
+  if (!booking.customer.phone.endsWith(phoneLast4)) {
+    throw fail(403, 'Os 4 últimos dígitos não conferem com o WhatsApp usado no agendamento. Confira e tente de novo.');
+  }
+  const view = publicBooking(booking);
+  if (booking.status === 'cancelled') throw fail(409, 'Este agendamento já estava cancelado.');
+  if (!view.cancellation.allowed) {
+    throw fail(409, `Faltam menos de ${CANCEL_MIN_HOURS} h para o seu horário. Para cancelar ou remarcar, fale com o salão.`);
+  }
+  booking.status = 'cancelled';
+  return publicBooking(booking);
 }

@@ -38,6 +38,46 @@ async function insertBooking(values) {
 }
 
 /**
+ * Agendamento como a cliente vê: sem telefone, e-mail ou sobrenome (quem tem o código vê a página).
+ * cancellation.allowed = ativo e ainda dentro do prazo de CANCEL_MIN_HOURS antes do horário.
+ */
+async function findPublicBooking(code) {
+  const { rows } = await query(
+    `SELECT b.code, b.status, b.customer_name,
+            to_char(b.starts_at AT TIME ZONE $2, 'YYYY-MM-DD') AS date,
+            to_char(b.starts_at AT TIME ZONE $2, 'HH24:MI') AS time,
+            b.ends_at < now() AS is_past,
+            (b.status IN ('pending', 'confirmed') AND now() <= b.starts_at - make_interval(hours => $3::int)) AS can_cancel,
+            to_char((b.starts_at - make_interval(hours => $3::int)) AT TIME ZONE $2, 'YYYY-MM-DD"T"HH24:MI') AS cancel_until,
+            s.name AS service_name, s.duration_min, s.price_cents,
+            p.name AS professional_name
+       FROM bookings b
+       JOIN services s ON s.id = b.service_id
+       JOIN professionals p ON p.id = b.professional_id
+      WHERE b.code = $1`,
+    [code, config.timezone, config.cancelMinHours],
+  );
+  if (!rows.length) return null;
+
+  const b = rows[0];
+  return {
+    code: formatCode(b.code),
+    status: b.status,
+    date: b.date,
+    time: b.time,
+    isPast: b.is_past,
+    customerFirstName: b.customer_name.split(/\s+/)[0],
+    service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
+    professional: { name: b.professional_name },
+    cancellation: {
+      allowed: b.can_cancel,
+      deadline: { date: b.cancel_until.slice(0, 10), time: b.cancel_until.slice(11, 16) },
+      minHours: config.cancelMinHours,
+    },
+  };
+}
+
+/**
  * POST /bookings
  * { serviceId, professionalId | 'any', date: 'YYYY-MM-DD', time: 'HH:MM', customer: { name, phone, email? } }
  * → 201 { id, code, status, professionalId } · 409 se o horário não está mais livre
@@ -77,8 +117,7 @@ bookingsRouter.post('/', async (req, res) => {
 });
 
 /**
- * GET /bookings/:code → { code, status, date, time, isPast, customerFirstName, service, professional }
- * Quem tem o código vê o agendamento, então não devolve telefone nem e-mail.
+ * GET /bookings/:code → { code, status, date, time, isPast, customerFirstName, service, professional, cancellation }
  * Limite de consultas por IP para ninguém sair testando códigos.
  */
 bookingsRouter.get(
@@ -86,33 +125,67 @@ bookingsRouter.get(
   rateLimit({ windowMs: 10 * 60 * 1000, max: 30, message: 'Muitas consultas seguidas. Espere alguns minutos e tente de novo.' }),
   async (req, res) => {
     const code = normalizeCode(req.params.code);
+    const booking = code && (await findPublicBooking(code));
+    if (!booking) throw new HttpError(404, NOT_FOUND);
+    res.json(booking);
+  },
+);
+
+/**
+ * POST /bookings/:code/cancel  { phoneLast4: '6666' }
+ * → 200 com o agendamento atualizado (mesmo formato do GET)
+ * · 400 dígitos inválidos · 403 dígitos não conferem · 404 código não existe
+ * · 409 já cancelado, já aconteceu ou fora do prazo de cancelamento
+ * Os 4 dígitos têm só 10 mil combinações: por isso o limite por código, além do limite por IP.
+ */
+bookingsRouter.post(
+  '/:code/cancel',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.' }),
+  rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    key: (req) => `code:${normalizeCode(req.params.code) || req.params.code}`,
+    message: 'Muitas tentativas para este agendamento. Espere uma hora ou fale com o salão.',
+  }),
+  async (req, res) => {
+    const code = normalizeCode(req.params.code);
     if (!code) throw new HttpError(404, NOT_FOUND);
 
-    const { rows } = await query(
-      `SELECT b.code, b.status, b.customer_name,
-              to_char(b.starts_at AT TIME ZONE $2, 'YYYY-MM-DD') AS date,
-              to_char(b.starts_at AT TIME ZONE $2, 'HH24:MI') AS time,
-              b.ends_at < now() AS is_past,
-              s.name AS service_name, s.duration_min, s.price_cents,
-              p.name AS professional_name
-         FROM bookings b
-         JOIN services s ON s.id = b.service_id
-         JOIN professionals p ON p.id = b.professional_id
-        WHERE b.code = $1`,
-      [code, config.timezone],
-    );
-    if (!rows.length) throw new HttpError(404, NOT_FOUND);
+    const raw = req.body?.phoneLast4;
+    const last4 = typeof raw === 'string' || typeof raw === 'number' ? String(raw).replace(/\D/g, '') : '';
+    if (last4.length !== 4) throw new HttpError(400, 'Digite os 4 últimos dígitos do WhatsApp usado no agendamento.');
 
-    const b = rows[0];
-    res.json({
-      code: formatCode(b.code),
-      status: b.status,
-      date: b.date,
-      time: b.time,
-      isPast: b.is_past,
-      customerFirstName: b.customer_name.split(/\s+/)[0],
-      service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
-      professional: { name: b.professional_name },
-    });
+    // Uma única instrução: só cancela se tudo bater ao mesmo tempo (sem janela para corrida).
+    const { rowCount } = await query(
+      `UPDATE bookings
+          SET status = 'cancelled', cancelled_at = now()
+        WHERE code = $1
+          AND status IN ('pending', 'confirmed')
+          AND right(customer_phone, 4) = $2
+          AND now() <= starts_at - make_interval(hours => $3::int)`,
+      [code, last4, config.cancelMinHours],
+    );
+
+    if (!rowCount) {
+      // Não cancelou: descobre o motivo para dizer à cliente o que fazer.
+      const { rows } = await query(
+        `SELECT status, right(customer_phone, 4) = $2 AS phone_ok, ends_at < now() AS is_past
+           FROM bookings WHERE code = $1`,
+        [code, last4],
+      );
+      if (!rows.length) throw new HttpError(404, NOT_FOUND);
+      const r = rows[0];
+      if (!r.phone_ok) {
+        throw new HttpError(403, 'Os 4 últimos dígitos não conferem com o WhatsApp usado no agendamento. Confira e tente de novo.');
+      }
+      if (r.status === 'cancelled') throw new HttpError(409, 'Este agendamento já estava cancelado.');
+      if (r.status === 'done' || r.is_past) throw new HttpError(409, 'Este atendimento já aconteceu, então não dá mais para cancelar.');
+      throw new HttpError(
+        409,
+        `Faltam menos de ${config.cancelMinHours} h para o seu horário. Para cancelar ou remarcar, fale com o salão.`,
+      );
+    }
+
+    res.json(await findPublicBooking(code));
   },
 );
