@@ -63,7 +63,8 @@ export default function SiteLayout() {
             {customer ? (
               <>
                 <NavLink to="/minhas-reservas" className="site-nav__link">
-                  Minhas reservas
+                  <span className="nav-label--long">Minhas reservas</span>
+                  <span className="nav-label--short">Reservas</span>
                 </NavLink>
                 <button type="button" className="site-nav__link site-nav__button" onClick={handleLogout}>
                   Sair
@@ -72,7 +73,8 @@ export default function SiteLayout() {
             ) : (
               <>
                 <NavLink to="/acompanhar" className="site-nav__link">
-                  Meu agendamento
+                  <span className="nav-label--long">Meu agendamento</span>
+                  <span className="nav-label--short">Acompanhar</span>
                 </NavLink>
                 <NavLink to="/entrar" className="site-nav__link">
                   Entrar

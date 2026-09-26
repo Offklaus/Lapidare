@@ -136,3 +136,24 @@
 .lp-summary__total { display:flex; justify-content:space-between; align-items:baseline; font-size:16px; font-weight:500; }
 .lp-summary__total span:last-child { font-family:var(--font-display); font-size:28px; line-height:34px; color:var(--accent); font-variant-numeric:tabular-nums; }
 .lp-summary__note { margin:0; font-size:12px; line-height:16px; color:var(--ink-muted); }
+.lp-summary > .lp-badge { align-self:flex-start; }
+
+/* ---------- Celular ---------- */
+@media (max-width: 960px) {
+  /* Alvo de toque confortável para o polegar (44px) */
+  .lp-btn { min-height:44px; }
+}
+@media (max-width: 560px) {
+  /* Etapa atual ganha espaço para o nome não ser cortado ("Data e horário") */
+  .lp-step.is-current { flex:3; }
+
+  /* Faixa de dias: rola com o dedo, sem barra; o esmaecido na borda mostra que tem mais */
+  .lp-dates { scrollbar-width:none; -webkit-mask-image:linear-gradient(to right, #000 85%, transparent); mask-image:linear-gradient(to right, #000 85%, transparent); padding-right:var(--space-6); }
+  .lp-dates::-webkit-scrollbar { display:none; }
+}
+@media (max-width: 400px) {
+  /* Telas bem estreitas (320px): etapa atual ainda maior e rótulo um pouco menor */
+  .lp-stepper { gap:var(--space-1); }
+  .lp-step.is-current { flex:4; }
+  .lp-step.is-current .lp-step__label { font-size:13px; }
+}

@@ -96,6 +96,17 @@
 }
 
 .theme-toggle:hover { border-color: var(--ouro-500); }
+.theme-toggle { flex-shrink: 0; }
+
+/* Rótulos do menu: versão curta só em telas bem estreitas */
+.nav-label--short { display: none; }
+
+@media (max-width: 400px) {
+  .nav-label--long { display: none; }
+  .nav-label--short { display: inline; }
+  .site-nav__link { padding-left: var(--space-2); padding-right: var(--space-2); }
+  .site-nav { margin-left: calc(-1 * var(--space-2)); }
+}
 .theme-toggle svg { width: 18px; height: 18px; }
 
 /* Rodapé */
@@ -328,6 +339,8 @@
     bottom: 0;
     z-index: 10;
     padding: var(--space-3) var(--space-4);
+    /* iPhone: fica acima da barra de gestos */
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
     background: var(--surface-raised);
     border-top: 1px solid var(--line);
     box-shadow: var(--shadow-md);
@@ -336,7 +349,10 @@
   .mobile-bar .lp-btn--primary,
   .mobile-bar .lp-btn--action { flex: 1; }
 
-  .booking { padding-bottom: 120px; }
+  /* Reserva a altura da barra fixa na página inteira, para ela não cobrir o rodapé */
+  .site:has(.mobile-bar) {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
 }
 
 /* Sucesso */
@@ -588,8 +604,52 @@
 
 @media (max-width: 640px) {
   .my-booking { grid-template-columns: 72px minmax(0, 1fr); padding: var(--space-4); }
-  .my-booking__link { grid-column: 1 / -1; justify-self: start; }
+  .my-booking__link { grid-column: 1 / -1; width: 100%; }
   .account-login { padding: var(--space-5); }
+  .account__head > .lp-btn { width: 100%; }
+}
+
+@media (max-width: 400px) {
+  /* Cartão de reserva: horário e data numa linha só, acima do serviço */
+  .my-booking { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .my-booking__when { flex-direction: row; align-items: baseline; gap: var(--space-2); }
+}
+
+/* ---------- Celular: alvos de toque, espaçamentos e botões na largura toda ---------- */
+@media (max-width: 560px) {
+  /* Menu, logo e botão de tema com altura mínima de 44px para o polegar */
+  .site-nav__link { display: inline-flex; align-items: center; min-height: 44px; }
+  .brand { min-height: 44px; }
+  .theme-toggle { width: 44px; height: 44px; }
+  .site-footer__inner a,
+  .account-login__links a { display: inline-flex; align-items: center; min-height: 44px; }
+
+  /* Home: destaque mais enxuto, botão principal na largura toda, serviços em 2 colunas */
+  .hero { padding: var(--space-7) 0; }
+  .hero__inner { gap: var(--space-4); }
+  .hero .lp-btn { width: 100%; }
+  .section { padding-top: var(--space-6); }
+  .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .category-card { padding: var(--space-4); }
+
+  /* Agendamento: menos respiro entre etapa e conteúdo */
+  .booking { padding-top: var(--space-5); padding-bottom: var(--space-6); }
+  .booking__grid { margin-top: var(--space-5); }
+  .booking__step { gap: var(--space-5); }
+
+  /* Ações empilhadas e na largura toda */
+  .success { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+  .success__actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .success__actions .lp-btn { width: 100%; }
+  .booking-code { width: 100%; padding: var(--space-4); }
+  .track { padding-top: var(--space-6); padding-bottom: var(--space-6); gap: var(--space-5); }
+  .track__cancel > div > .lp-btn { width: 100%; }
+  .track__cancel--open { padding: var(--space-4); }
+  .track__cancel--open .lp-field { max-width: none; }
+  .track__cancel-actions { flex-direction: column; }
+  .track__cancel-actions .lp-btn { width: 100%; }
+  .empty-state .lp-btn { width: 100%; }
+  .account { padding-top: var(--space-6); padding-bottom: var(--space-6); gap: var(--space-5); }
 }
 
 @media (max-width: 560px) {

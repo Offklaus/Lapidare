@@ -46,7 +46,8 @@ export default function GoogleSignInButton({ clientId, onCredential, onError }) 
           shape: 'rectangular',
           logo_alignment: 'left',
           locale: 'pt-BR',
-          width: 280,
+          // Ocupa o espaço disponível (celular estreito), dentro dos limites do Google: 200 a 400px.
+          width: Math.round(Math.max(200, Math.min(320, container.current.parentElement?.clientWidth || 280))),
         });
       })
       .catch((err) => alive && onError?.(err.message));

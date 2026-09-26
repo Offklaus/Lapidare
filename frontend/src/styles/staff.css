@@ -300,6 +300,33 @@
 @media (max-width: 560px) {
   /* Celular: logo e "Sair" na primeira linha, Agenda/Profissionais embaixo */
   .staff-nav-links { order: 3; margin-left: calc(-1 * var(--space-3)); }
+
+  /* Agenda: controles ocupam a largura; 16px no seletor evita o zoom automático do iPhone */
+  .staff-page { padding-top: var(--space-5); gap: var(--space-4); }
+  .staff-toolbar { width: 100%; }
+  /* Dia/Semana numa linha, ‹ Hoje › na seguinte, cada um na largura toda */
+  .staff-segment { flex: 1 1 100%; }
+  .staff-segment button { flex: 1; min-height: 44px; }
+  .staff-nav { flex: 1 1 100%; }
+  .staff-nav .lp-btn { min-width: 48px; }
+  .staff-nav .lp-btn:nth-child(2) { flex: 1; }
+  .staff-filter { width: 100%; }
+  .staff-select { width: 100%; font-size: 16px; min-height: 44px; }
+  .staff-counts { gap: var(--space-2); }
+  .staff-counts div { padding: var(--space-2) var(--space-3); }
+  .staff-counts dd { font-size: 24px; line-height: 28px; }
+  /* Contatos da cliente: um por linha, com área de toque de 44px (WhatsApp é o mais usado no celular) */
+  .staff-booking__contact { flex-direction: column; gap: 0; }
+  .staff-booking__contact a { display: inline-flex; align-items: center; min-height: 44px; align-self: flex-start; }
+  .staff-booking__actions { flex-direction: column; align-items: stretch; }
+  .staff-booking__actions .lp-btn { width: 100%; }
+  .staff-reminder-notice .lp-btn { width: 100%; }
+  .staff-pro { padding: var(--space-4); }
+  .staff-pro__actions .lp-btn { width: 100%; }
+
+  /* Login da equipe */
+  .staff-login__card { padding: var(--space-5); }
+  .staff-login__card > a { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
 @media (max-width: 420px) {

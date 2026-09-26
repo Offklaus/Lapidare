@@ -1,9 +1,23 @@
+import { useEffect, useRef } from 'react';
 import { cx, parseISODate, WEEKDAYS, MONTHS } from '../lib/format.js';
 
 /** days: [{ date: 'YYYY-MM-DD', available: boolean }] */
 export default function DateStrip({ days = [], value, onChange, label = 'Escolha o dia' }) {
+  const strip = useRef(null);
+
+  // No celular a faixa rola para o lado: garante que o dia escolhido fique à vista.
+  useEffect(() => {
+    const el = strip.current?.querySelector('.lp-date.is-selected');
+    if (!el) return;
+    const box = strip.current;
+    const left = el.offsetLeft - box.offsetLeft;
+    if (left < box.scrollLeft || left + el.offsetWidth > box.scrollLeft + box.clientWidth) {
+      box.scrollLeft = Math.max(0, left - 8);
+    }
+  }, [value, days.length]);
+
   return (
-    <div className="lp-dates" role="radiogroup" aria-label={label}>
+    <div className="lp-dates" role="radiogroup" aria-label={label} ref={strip}>
       {days.map((d) => {
         const dt = parseISODate(d.date);
         const selected = value === d.date;

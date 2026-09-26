@@ -12,7 +12,8 @@ export default function TimeSlotGrid({ slots = [], value, onChange, label = 'Hor
     <div className="lp-slots" role="radiogroup" aria-label={label}>
       {GROUPS.map(([title, inGroup]) => {
         const list = slots.filter((s) => inGroup(s.time));
-        if (!list.length) return null;
+        // Período sem nenhum horário livre (ex.: a manhã de hoje que já passou) não ocupa a tela.
+        if (!list.some((s) => s.status === 'available')) return null;
         return (
           <div key={title} className="lp-slots__group">
             <span className="lp-slots__title">{title}</span>
