@@ -11,7 +11,12 @@ import { bookingsRouter } from './routes/bookings.js';
 export const app = express();
 
 app.disable('x-powered-by');
-app.use(cors({ origin: config.corsOrigins }));
+// Em desenvolvimento aceita qualquer porta de localhost (o Vite muda de porta se a 5173 estiver ocupada).
+const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+const allowOrigin = (origin) =>
+  !origin || config.corsOrigins.includes(origin) || (!config.isProduction && LOCAL_ORIGIN.test(origin));
+
+app.use(cors({ origin: (origin, callback) => callback(null, allowOrigin(origin)) }));
 app.use(express.json({ limit: '10kb' }));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
