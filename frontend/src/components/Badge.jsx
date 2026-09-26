@@ -9,4 +9,5 @@ export const BOOKING_STATUS = {
   pending: { tone: 'warning', label: 'Pendente' },
   cancelled: { tone: 'danger', label: 'Cancelado' },
   done: { tone: 'neutral', label: 'Concluído' },
+  no_show: { tone: 'warning', label: 'Faltou' },
 };

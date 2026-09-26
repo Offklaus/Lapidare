@@ -14,5 +14,7 @@ export const config = {
   cancelMinHours: Number.isInteger(Number(process.env.CANCEL_MIN_HOURS)) && process.env.CANCEL_MIN_HOURS !== ''
     ? Math.max(0, Number(process.env.CANCEL_MIN_HOURS))
     : 24,
+  // Quantos dias o login da equipe dura antes de pedir a senha de novo.
+  staffSessionDays: Number(process.env.STAFF_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.STAFF_SESSION_DAYS)) : 7,
   maxDays: 31,
 };

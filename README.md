@@ -118,6 +118,31 @@ frontend/src/
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.
 
+### Painel da equipe (`/equipe` no site)
+
+Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include'`):
+
+| Método | Rota | Resposta |
+| --- | --- | --- |
+| POST | `/staff/login` | corpo `{ email, password }` → `{ user }` + cookie · `401` e-mail ou senha incorretos · `429` após 5 tentativas por e-mail em 15 min |
+| POST | `/staff/logout` | `204` e apaga a sessão |
+| GET | `/staff/me` | `{ user: { id, name, email, role: 'admin'\|'professional', professionalId } }` · `401` sem sessão |
+| GET | `/staff/bookings?from=&to=&professionalId=` | `{ from, to, bookings: [{ id, code, status, cancelledBy, date, time, endTime, started, customer: { name, phone, email }, service, professional, actions: { cancel, done, noShow } }] }` — profissional sempre vê só a própria agenda; período de até 31 dias |
+| PATCH | `/staff/bookings/:id/status` | corpo `{ status: 'done'\|'no_show'\|'cancelled' }` → agendamento atualizado · cancelar só antes do horário começar; concluído/faltou só depois · `409` quando não é permitido |
+
+Contas são criadas pelo terminal (a senha é digitada sem aparecer):
+
+```bash
+cd backend
+npm run staff:create                                    # pede nome, e-mail, perfil e senha
+npm run staff:password -- --email pessoa@salao.com      # troca a senha e encerra as sessões
+npm run staff:deactivate -- --email pessoa@salao.com    # tira o acesso
+```
+
+Perfis: `admin` vê a agenda do salão inteiro e filtra por profissional; `profissional` fica ligada a um cadastro de profissional e vê só a própria agenda.
+
+Em produção, sirva o site e a API no mesmo domínio (ou subdomínios do mesmo site) para o cookie da sessão funcionar, e use HTTPS (`NODE_ENV=production` marca o cookie como `Secure`).
+
 Corpo do `POST /bookings`:
 
 ```json

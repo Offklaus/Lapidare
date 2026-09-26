@@ -4,7 +4,7 @@
 import * as mock from './mock.js';
 
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/$/, '');
-const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false';
+export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false';
 
 export class ApiError extends Error {
   constructor(message, status, body) {
@@ -15,7 +15,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', params, body } = {}) {
+/** credentials: 'include' envia o cookie de sessão (painel da equipe). */
+export async function request(path, { method = 'GET', params, body, credentials } = {}) {
   const url = new URL(`${BASE_URL}${path}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -29,6 +30,7 @@ async function request(path, { method = 'GET', params, body } = {}) {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
+      credentials,
     });
   } catch {
     throw new ApiError('Não conseguimos falar com o salão agora. Confira sua conexão e tente de novo.', 0);

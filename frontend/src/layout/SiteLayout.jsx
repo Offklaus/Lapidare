@@ -75,6 +75,7 @@ export default function SiteLayout() {
             <a href="https://instagram.com/lapidare.beauty" target="_blank" rel="noreferrer">
               @lapidare.beauty
             </a>
+            <Link to="/equipe">Área da equipe</Link>
           </div>
         </div>
       </footer>

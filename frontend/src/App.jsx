@@ -6,6 +6,9 @@ import BookingPage from './pages/booking/BookingPage.jsx';
 import BookingSuccessPage from './pages/BookingSuccessPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import TrackBookingPage from './pages/TrackBookingPage.jsx';
+import StaffLayout from './pages/staff/StaffLayout.jsx';
+import StaffLoginPage from './pages/staff/StaffLoginPage.jsx';
+import StaffAgendaPage from './pages/staff/StaffAgendaPage.jsx';
 
 export default function App() {
   return (
@@ -17,6 +20,12 @@ export default function App() {
         <Route path="acompanhar" element={<TrackBookingPage />} />
         <Route path="acompanhar/:code" element={<TrackBookingPage />} />
         <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      {/* Área da equipe: layout próprio, sem o menu do site */}
+      <Route path="equipe/entrar" element={<StaffLoginPage />} />
+      <Route path="equipe" element={<StaffLayout />}>
+        <Route index element={<StaffAgendaPage />} />
       </Route>
     </Routes>
   );

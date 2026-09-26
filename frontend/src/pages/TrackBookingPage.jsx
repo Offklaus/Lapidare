@@ -12,6 +12,7 @@ const NOTES = {
   pending: 'Estamos confirmando seu horário. A confirmação chega pelo WhatsApp.',
   cancelled: 'Este agendamento foi cancelado. Se quiser, escolha um novo horário.',
   done: 'Atendimento realizado. Esperamos te ver de novo em breve.',
+  no_show: 'Não registramos sua presença neste horário. Quando quiser, é só agendar de novo.',
 };
 
 /** Agendamento ativo cuja hora já passou aparece como concluído. */

@@ -7,6 +7,7 @@ import { servicesRouter } from './routes/services.js';
 import { professionalsRouter } from './routes/professionals.js';
 import { availabilityRouter } from './routes/availability.js';
 import { bookingsRouter } from './routes/bookings.js';
+import { staffRouter } from './routes/staff.js';
 
 export const app = express();
 
@@ -16,7 +17,8 @@ const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 const allowOrigin = (origin) =>
   !origin || config.corsOrigins.includes(origin) || (!config.isProduction && LOCAL_ORIGIN.test(origin));
 
-app.use(cors({ origin: (origin, callback) => callback(null, allowOrigin(origin)) }));
+// credentials: o painel da equipe usa cookie de sessão nas chamadas.
+app.use(cors({ origin: (origin, callback) => callback(null, allowOrigin(origin)), credentials: true }));
 app.use(express.json({ limit: '10kb' }));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -25,6 +27,7 @@ app.use('/services', servicesRouter);
 app.use('/professionals', professionalsRouter);
 app.use('/availability', availabilityRouter);
 app.use('/bookings', bookingsRouter);
+app.use('/staff', staffRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Rota não encontrada.' });

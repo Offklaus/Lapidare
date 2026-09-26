@@ -33,6 +33,13 @@ export function toISODate(date) {
   return `${y}-${m}-${d}`;
 }
 
+/** addDaysISO('2026-09-30', 1) → '2026-10-01' */
+export function addDaysISO(iso, days) {
+  const dt = parseISODate(iso);
+  dt.setDate(dt.getDate() + days);
+  return toISODate(dt);
+}
+
 /** '2026-09-29' → "ter, 29 de set". */
 export function formatShortDate(iso) {
   const dt = parseISODate(iso);

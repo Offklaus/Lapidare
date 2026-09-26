@@ -158,7 +158,7 @@ bookingsRouter.post(
     // Uma única instrução: só cancela se tudo bater ao mesmo tempo (sem janela para corrida).
     const { rowCount } = await query(
       `UPDATE bookings
-          SET status = 'cancelled', cancelled_at = now()
+          SET status = 'cancelled', cancelled_at = now(), cancelled_by = 'customer'
         WHERE code = $1
           AND status IN ('pending', 'confirmed')
           AND right(customer_phone, 4) = $2
