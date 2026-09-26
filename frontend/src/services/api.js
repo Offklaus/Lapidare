@@ -1,0 +1,72 @@
+/* Cliente da API de agendamento.
+   Contrato definido no design system (README → "Contrato com o back-end").
+   Com VITE_USE_MOCK=true (padrão) usa src/services/mock.js no lugar do servidor. */
+import * as mock from './mock.js';
+
+const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/$/, '');
+const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false';
+
+export class ApiError extends Error {
+  constructor(message, status, body) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+async function request(path, { method = 'GET', params, body } = {}) {
+  const url = new URL(`${BASE_URL}${path}`);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
+    });
+  }
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError('Não conseguimos falar com o salão agora. Confira sua conexão e tente de novo.', 0);
+  }
+
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(data?.message || 'Algo deu errado. Tente de novo em instantes.', res.status, data);
+  }
+  return data;
+}
+
+/** GET /services → [{ id, category, name, description, duration, price }] */
+export function getServices() {
+  if (USE_MOCK) return mock.getServices();
+  return request('/services');
+}
+
+/** GET /professionals?serviceId= → [{ id, name, role, specialties, photo }] */
+export function getProfessionals(serviceId) {
+  if (USE_MOCK) return mock.getProfessionals(serviceId);
+  return request('/professionals', { params: { serviceId } });
+}
+
+/** GET /availability → { days: [{ date, available }] } */
+export function getAvailability({ serviceId, professionalId = 'any', from, days = 14 }) {
+  if (USE_MOCK) return mock.getAvailability({ serviceId, professionalId, from, days });
+  return request('/availability', { params: { serviceId, professionalId, from, days } });
+}
+
+/** GET /availability/slots → [{ time, status, professionalId }] */
+export function getSlots({ serviceId, professionalId = 'any', date }) {
+  if (USE_MOCK) return mock.getSlots({ serviceId, professionalId, date });
+  return request('/availability/slots', { params: { serviceId, professionalId, date } });
+}
+
+/** POST /bookings → 201 { id, status } · 409 se o horário foi reservado nesse meio-tempo */
+export function createBooking(payload) {
+  if (USE_MOCK) return mock.createBooking(payload);
+  return request('/bookings', { method: 'POST', body: payload });
+}

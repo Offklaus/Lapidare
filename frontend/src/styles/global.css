@@ -1,0 +1,87 @@
+/* Base global + estilos tipográficos do design system */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 4px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+/* Estilos tipográficos (tokens.json → type.groups) */
+.t-display-xl { font-family: var(--font-display); font-size: 56px; line-height: 60px; font-weight: 500; letter-spacing: -0.01em; }
+.t-display-l  { font-family: var(--font-display); font-size: 40px; line-height: 44px; font-weight: 500; }
+.t-heading    { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 500; }
+.t-heading-sm { font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; }
+.t-caps       { font-family: var(--font-display); font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase; }
+.t-title      { font-size: 18px; line-height: 26px; font-weight: 500; }
+.t-body       { font-size: 16px; line-height: 24px; font-weight: 400; }
+.t-body-sm    { font-size: 14px; line-height: 20px; font-weight: 400; }
+.t-label      { font-size: 13px; line-height: 16px; font-weight: 500; letter-spacing: 0.06em; }
+.t-caption    { font-size: 12px; line-height: 16px; font-weight: 400; }
+.t-numeral    { font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.t-muted  { color: var(--ink-muted); }
+.t-accent { color: var(--accent); }
+
+@media (max-width: 560px) {
+  .t-display-xl { font-size: 40px; line-height: 44px; }
+  .t-display-l  { font-size: 32px; line-height: 38px; }
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

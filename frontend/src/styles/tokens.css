@@ -1,0 +1,143 @@
+/* Lapidare — tokens do design system (gerados a partir de tokens.json).
+   Tema claro "Marfim" é o padrão; tema escuro "Oliva" segue o sistema ou data-theme="dark". */
+
+:root {
+  /* Paleta base */
+  --oliva-950: #1d1f0f;
+  --oliva-900: #2b2d17;
+  --oliva-800: #3a3d22;
+  --oliva-700: #4c5031;
+  --salvia-500: #6c765c;
+  --salvia-300: #a9b096;
+  --salvia-100: #e4e7d9;
+  --marfim-50: #faf7f0;
+  --marfim-100: #f1ece0;
+  --ouro-400: #d2b77a;
+  --ouro-500: #b59a5c;
+  --ouro-700: #7a6431;
+  --cobre-500: #8a4a31;
+  --cobre-300: #d99a7b;
+
+  /* Tipografia */
+  --font-display: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --font-sans: "Jost", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+
+  /* Espaçamento */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Raios */
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  color-scheme: light;
+}
+
+/* Tema claro — Marfim */
+:root,
+:root[data-theme="light"] {
+  --surface: var(--marfim-50);
+  --surface-raised: #ffffff;
+  --surface-sunken: var(--marfim-100);
+  --surface-brand: var(--oliva-900);
+  --brand-deep: var(--oliva-900);
+  --ink: var(--oliva-900);
+  --ink-muted: #5b5e45;
+  --ink-disabled: #a3a28c;
+  --on-brand: var(--marfim-50);
+  --accent: var(--ouro-700);
+  --accent-line: var(--ouro-500);
+  --primary: var(--oliva-900);
+  --primary-hover: var(--oliva-800);
+  --on-primary: var(--marfim-50);
+  --action: var(--cobre-500);
+  --action-hover: #743c27;
+  --on-action: #ffffff;
+  --line: #d9d3c1;
+  --line-strong: #8f8b74;
+  --focus: var(--cobre-500);
+  --success: #1f6470;
+  --success-soft: #e1eef0;
+  --warning: #7d5a00;
+  --warning-soft: #f6ecd0;
+  --danger: #a4331f;
+  --danger-soft: #f8e3dd;
+  --shadow-sm: 0 1px 2px rgba(43, 45, 23, 0.08);
+  --shadow-md: 0 8px 24px rgba(43, 45, 23, 0.12);
+}
+
+/* Tema escuro — Oliva */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: var(--oliva-950);
+    --surface-raised: #282a15;
+    --surface-sunken: #15170a;
+    --surface-brand: #101206;
+    --brand-deep: var(--oliva-700);
+    --ink: var(--marfim-100);
+    --ink-muted: #bdbca4;
+    --ink-disabled: #6b6c52;
+    --on-brand: var(--marfim-100);
+    --accent: var(--ouro-400);
+    --accent-line: var(--ouro-500);
+    --primary: var(--ouro-400);
+    --primary-hover: #e0c78f;
+    --on-primary: var(--oliva-950);
+    --action: var(--cobre-300);
+    --action-hover: #e6ae92;
+    --on-action: var(--oliva-950);
+    --line: #3f4228;
+    --line-strong: #7d7e62;
+    --focus: #e7c58f;
+    --success: #86c5cf;
+    --success-soft: #15343a;
+    --warning: #e6c46e;
+    --warning-soft: #3a3010;
+    --danger: #f2a38e;
+    --danger-soft: #40190f;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: var(--oliva-950);
+  --surface-raised: #282a15;
+  --surface-sunken: #15170a;
+  --surface-brand: #101206;
+  --brand-deep: var(--oliva-700);
+  --ink: var(--marfim-100);
+  --ink-muted: #bdbca4;
+  --ink-disabled: #6b6c52;
+  --on-brand: var(--marfim-100);
+  --accent: var(--ouro-400);
+  --accent-line: var(--ouro-500);
+  --primary: var(--ouro-400);
+  --primary-hover: #e0c78f;
+  --on-primary: var(--oliva-950);
+  --action: var(--cobre-300);
+  --action-hover: #e6ae92;
+  --on-action: var(--oliva-950);
+  --line: #3f4228;
+  --line-strong: #7d7e62;
+  --focus: #e7c58f;
+  --success: #86c5cf;
+  --success-soft: #15343a;
+  --warning: #e6c46e;
+  --warning-soft: #3a3010;
+  --danger: #f2a38e;
+  --danger-soft: #40190f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
