@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { Facet } from '../components/index.js';
+import { useCustomer } from '../context/CustomerContext.jsx';
 import useTheme from '../hooks/useTheme.js';
 
 function ThemeToggle() {
@@ -31,6 +32,13 @@ function ThemeToggle() {
 
 export default function SiteLayout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { customer, logout } = useCustomer();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -47,16 +55,30 @@ export default function SiteLayout() {
               <span className="brand__sub">BEAUTY</span>
             </span>
           </Link>
+          {/* O logo já leva ao início; o menu fica curto para caber no celular. */}
           <nav className="site-nav" aria-label="Principal">
-            <NavLink to="/" end className="site-nav__link">
-              Início
-            </NavLink>
             <NavLink to="/agendar" className="site-nav__link">
               Agendar
             </NavLink>
-            <NavLink to="/acompanhar" className="site-nav__link">
-              Meu agendamento
-            </NavLink>
+            {customer ? (
+              <>
+                <NavLink to="/minhas-reservas" className="site-nav__link">
+                  Minhas reservas
+                </NavLink>
+                <button type="button" className="site-nav__link site-nav__button" onClick={handleLogout}>
+                  Sair
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/acompanhar" className="site-nav__link">
+                  Meu agendamento
+                </NavLink>
+                <NavLink to="/entrar" className="site-nav__link">
+                  Entrar
+                </NavLink>
+              </>
+            )}
             <ThemeToggle />
           </nav>
         </div>

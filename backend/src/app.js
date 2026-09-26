@@ -8,6 +8,7 @@ import { professionalsRouter } from './routes/professionals.js';
 import { availabilityRouter } from './routes/availability.js';
 import { bookingsRouter } from './routes/bookings.js';
 import { staffRouter } from './routes/staff.js';
+import { customerRouter } from './routes/customer.js';
 
 export const app = express();
 
@@ -28,6 +29,7 @@ app.use('/professionals', professionalsRouter);
 app.use('/availability', availabilityRouter);
 app.use('/bookings', bookingsRouter);
 app.use('/staff', staffRouter);
+app.use('/customer', customerRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Rota não encontrada.' });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { BookingSummary, Button, Stepper } from '../../components/index.js';
+import { useCustomer } from '../../context/CustomerContext.jsx';
 import { createBooking } from '../../services/api.js';
 import { formatDuration, formatShortDate, phoneDigits } from '../../lib/format.js';
 import { hasErrors, validateCustomer } from '../../lib/validation.js';
@@ -42,6 +43,15 @@ export default function BookingPage() {
   }, [state.step]);
 
   const { step, service, professional, professionals, date, time, slotProfessionalId, customer } = state;
+
+  // Cliente logada com Google: nome e e-mail já vêm preenchidos (ela pode mudar).
+  const { customer: account } = useCustomer();
+  useEffect(() => {
+    if (!account) return;
+    if (!customer.name) dispatch({ type: 'SET_CUSTOMER_FIELD', field: 'name', value: account.name });
+    if (!customer.email) dispatch({ type: 'SET_CUSTOMER_FIELD', field: 'email', value: account.email });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
 
   const attendedBy = useMemo(() => {
     if (!professional) return null;

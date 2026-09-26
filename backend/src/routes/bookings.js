@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { formatCode, generateCode, normalizeCode } from '../lib/bookingCode.js';
+import { findCustomer } from '../lib/customerAuth.js';
 import { HttpError } from '../lib/errors.js';
 import { rateLimit } from '../lib/rateLimit.js';
 import { parseCustomer, parseDate, parseId, parseProfessionalId, parseTime } from '../lib/validate.js';
@@ -16,11 +17,11 @@ const NOT_FOUND = 'Não encontramos agendamento com esse código. Confira as let
 
 const INSERT_BOOKING = `
   INSERT INTO bookings (code, service_id, professional_id, starts_at, ends_at, status,
-                        customer_name, customer_phone, customer_email)
+                        customer_name, customer_phone, customer_email, customer_id)
   VALUES ($1, $2, $3,
           ($4::date + $5::time) AT TIME ZONE $6,
           ($4::date + $5::time + make_interval(mins => $7::int)) AT TIME ZONE $6,
-          'confirmed', $8, $9, $10)
+          'confirmed', $8, $9, $10, $11)
   RETURNING id, code, status, professional_id`;
 
 /** Insere com um código novo; se o código sorteado já existir (raríssimo), sorteia outro. */
@@ -98,10 +99,13 @@ bookingsRouter.post('/', async (req, res) => {
   if (!slot) throw new HttpError(400, 'Esse horário não faz parte do expediente. Escolha um dos horários da lista.');
   if (slot.status !== 'available') throw new HttpError(409, TAKEN);
 
+  // Cliente logada (login com Google): a reserva fica ligada à conta e aparece em "Minhas reservas".
+  const account = await findCustomer(req);
+
   try {
     const booking = await insertBooking([
       service.id, slot.professionalId, date, time, config.timezone, service.duration,
-      customer.name, customer.phone, customer.email,
+      customer.name, customer.phone, customer.email, account?.id ?? null,
     ]);
     res.status(201).json({
       id: booking.id,

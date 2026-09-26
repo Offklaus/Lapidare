@@ -118,6 +118,29 @@ frontend/src/
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.
 
+### Conta da cliente (login com Google)
+
+As clientes entram em `/entrar` com a conta Google e veem as próprias reservas em `/minhas-reservas`.
+A sessão da cliente (cookie `lp_customer`) é separada da equipe e **nunca** dá acesso ao painel.
+
+| Método | Rota | Resposta |
+| --- | --- | --- |
+| GET | `/customer/config` | `{ googleClientId }` — `null` enquanto `GOOGLE_CLIENT_ID` não estiver no `.env` |
+| POST | `/customer/login/google` | corpo `{ credential }` (ID token do botão do Google, conferido no servidor) → `{ customer }` + cookie · `401` token inválido ou e-mail não verificado · `503` login não configurado |
+| POST | `/customer/logout` | `204` |
+| GET | `/customer/me` | `{ customer: { id, name, email, picture } }` · `401` sem login |
+| GET | `/customer/bookings` | reservas feitas logada + reservas com o mesmo e-mail do Google, mais recentes primeiro |
+
+Reserva criada com a cliente logada (`POST /bookings` com o cookie) fica ligada à conta (`bookings.customer_id`).
+
+**Configurar o Google** (uma vez):
+
+1. Em https://console.cloud.google.com crie um projeto (ou use um existente).
+2. *APIs e serviços → Tela de permissão OAuth*: tipo **Externo**, nome "Lapidare Beauty", e-mail de suporte; pode publicar em produção (só usa nome e e-mail).
+3. *APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth*: tipo **Aplicativo da Web**.
+4. Em **Origens JavaScript autorizadas**, adicione o endereço do site (em desenvolvimento, `http://localhost:5173`; depois, o domínio real com `https://`).
+5. Copie o **ID do cliente** para `GOOGLE_CLIENT_ID` no `backend/.env` e reinicie a API.
+
 ### Painel da equipe (`/equipe` no site)
 
 Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include'`):

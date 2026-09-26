@@ -461,6 +461,137 @@
 
 .notice--success { background: var(--success-soft); color: var(--success); }
 
+/* Cabeçalho: "Sair" é botão, mas com a aparência dos links do menu */
+.site-nav__button {
+  font: inherit;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Conta da cliente: login e Minhas reservas */
+.account {
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.account-login {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.account-login__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+}
+
+.account-login__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.account-login__action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.google-button { min-height: 44px; }
+
+.account-login__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.account__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.account__head > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.account__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.my-bookings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.my-booking {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.my-booking__when { display: flex; flex-direction: column; }
+
+.my-booking__time {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.my-booking__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-booking__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .my-booking { grid-template-columns: 72px minmax(0, 1fr); padding: var(--space-4); }
+  .my-booking__link { grid-column: 1 / -1; justify-self: start; }
+  .account-login { padding: var(--space-5); }
+}
+
 @media (max-width: 560px) {
   /* Celular: logo na primeira linha, menu inteiro na segunda */
   .site-header__inner {

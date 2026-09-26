@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Badge, BookingSummary, Button, BOOKING_STATUS } from '../components/index.js';
+import { useCustomer } from '../context/CustomerContext.jsx';
 
 export default function BookingSuccessPage() {
   const { state } = useLocation();
   const [copied, setCopied] = useState(false);
+  const { customer: account } = useCustomer();
 
   if (!state?.booking) {
     return (
@@ -60,6 +62,11 @@ export default function BookingSuccessPage() {
       </div>
 
       <div className="success__actions">
+        {account ? (
+          <Link to="/minhas-reservas" className="lp-btn lp-btn--primary">
+            Ver em Minhas reservas
+          </Link>
+        ) : null}
         {code ? (
           <Link to={`/acompanhar/${code}`} className="lp-btn lp-btn--secondary">
             Acompanhar agendamento

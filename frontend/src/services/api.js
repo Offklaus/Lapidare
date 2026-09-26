@@ -70,7 +70,8 @@ export function getSlots({ serviceId, professionalId = 'any', date }) {
 /** POST /bookings → 201 { id, code, status } · 409 se o horário foi reservado nesse meio-tempo */
 export function createBooking(payload) {
   if (USE_MOCK) return mock.createBooking(payload);
-  return request('/bookings', { method: 'POST', body: payload });
+  // credentials: se a cliente estiver logada, a reserva fica ligada à conta dela.
+  return request('/bookings', { method: 'POST', body: payload, credentials: 'include' });
 }
 
 /** GET /bookings/:code → { code, status, date, time, isPast, customerFirstName, service, professional } · 404 se não existe */

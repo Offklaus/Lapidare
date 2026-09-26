@@ -1,42 +1,21 @@
-/* Sessões da equipe: token aleatório no cookie httpOnly, só o hash SHA-256 dele no banco. */
-import { createHash, randomBytes } from 'node:crypto';
-
+/* Sessões da equipe (cookie lp_staff, tabela staff_sessions). */
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
-import { parseCookies } from './cookies.js';
 import { HttpError } from './errors.js';
+import { hashToken, sessionStore } from './sessions.js';
 
-export const SESSION_COOKIE = 'lp_staff';
+const store = sessionStore({
+  table: 'staff_sessions',
+  ownerColumn: 'user_id',
+  cookieName: 'lp_staff',
+  days: () => config.staffSessionDays,
+});
 
-const hashToken = (token) => createHash('sha256').update(token).digest('hex');
-
-/** Opções do cookie. SameSite=Lax: o navegador não manda o cookie em POST vindo de outro site. */
-export function sessionCookieOptions({ withMaxAge = true } = {}) {
-  return {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: config.isProduction,
-    path: '/',
-    ...(withMaxAge ? { maxAge: config.staffSessionDays * 24 * 60 * 60 * 1000 } : {}),
-  };
-}
-
-export const readSessionToken = (req) => parseCookies(req.headers.cookie)[SESSION_COOKIE];
-
-export async function createSession(userId) {
-  const token = randomBytes(32).toString('base64url');
-  await query('DELETE FROM staff_sessions WHERE expires_at < now()');
-  await query(
-    `INSERT INTO staff_sessions (token_hash, user_id, expires_at)
-     VALUES ($1, $2, now() + make_interval(days => $3::int))`,
-    [hashToken(token), userId, config.staffSessionDays],
-  );
-  return token;
-}
-
-export async function destroySession(token) {
-  if (token) await query('DELETE FROM staff_sessions WHERE token_hash = $1', [hashToken(token)]);
-}
+export const SESSION_COOKIE = store.cookieName;
+export const sessionCookieOptions = store.cookieOptions;
+export const readSessionToken = store.read;
+export const createSession = store.create;
+export const destroySession = store.destroy;
 
 /** O que o front recebe sobre a pessoa logada. */
 export const publicStaff = (u) => ({

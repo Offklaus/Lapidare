@@ -16,5 +16,9 @@ export const config = {
     : 24,
   // Quantos dias o login da equipe dura antes de pedir a senha de novo.
   staffSessionDays: Number(process.env.STAFF_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.STAFF_SESSION_DAYS)) : 7,
+  // Login das clientes com Google: Client ID criado no Google Cloud (vazio = login com Google desligado).
+  googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+  customerSessionDays:
+    Number(process.env.CUSTOMER_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.CUSTOMER_SESSION_DAYS)) : 30,
   maxDays: 31,
 };
