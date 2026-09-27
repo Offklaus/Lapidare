@@ -27,7 +27,8 @@ export default function ProfessionalStep({ selectedId, onSelect, onLoaded }) {
         selected={selectedId === ANY_PROFESSIONAL.id}
         onSelect={() => onSelect(ANY_PROFESSIONAL)}
       />
-      {professionals.map((p) => (
+      {/* Quem ainda não tem nenhum serviço marcado no painel não aparece para a cliente. */}
+      {professionals.filter((p) => p.specialties?.length).map((p) => (
         <ProfessionalCard
           key={p.id}
           name={p.name}

@@ -32,6 +32,10 @@ export const getStaffProfessionals = () => request('/staff/professionals', withS
 export const updateProfessional = (id, { name, role }) =>
   request(`/staff/professionals/${encodeURIComponent(id)}`, { method: 'PATCH', body: { name, role }, ...withSession });
 
+/** PUT /staff/professionals/:id/services { serviceIds } → { id, serviceIds } (só admin) */
+export const updateProfessionalServices = (id, serviceIds) =>
+  request(`/staff/professionals/${encodeURIComponent(id)}/services`, { method: 'PUT', body: { serviceIds }, ...withSession });
+
 /** PATCH /staff/bookings/:id/status { status: 'done' | 'no_show' | 'cancelled' } → agendamento atualizado */
 export const updateBookingStatus = (id, status) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status }, ...withSession });

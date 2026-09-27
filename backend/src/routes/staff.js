@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 
 import { config } from '../config.js';
-import { query } from '../db/pool.js';
+import { pool, query } from '../db/pool.js';
 import { formatCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
@@ -258,10 +258,57 @@ staffRouter.post('/bookings/:id/reminder-sent', recordMessageSent('reminder'));
 
 /* ---------- Profissionais (só admin) ---------- */
 
-/** GET /staff/professionals → [{ id, name, role, active }] (inclui inativas) */
+/** GET /staff/professionals → [{ id, name, role, active, serviceIds }] (inclui inativas) */
 staffRouter.get('/professionals', requireAdmin, async (req, res) => {
-  const { rows } = await query('SELECT id, name, role, active FROM professionals ORDER BY sort, name');
-  res.json(rows);
+  const { rows } = await query(
+    `SELECT p.id, p.name, p.role, p.active,
+            COALESCE(array_agg(ps.service_id ORDER BY ps.service_id) FILTER (WHERE ps.service_id IS NOT NULL), '{}') AS service_ids
+       FROM professionals p
+       LEFT JOIN professional_services ps ON ps.professional_id = p.id
+      GROUP BY p.id
+      ORDER BY p.sort, p.name`,
+  );
+  res.json(rows.map(({ service_ids: serviceIds, ...p }) => ({ ...p, serviceIds })));
+});
+
+/**
+ * PUT /staff/professionals/:id/services  { serviceIds: ['manicure', ...] }
+ * Define quais serviços a profissional faz (substitui a lista inteira). É o que filtra os serviços
+ * no agendamento e os horários oferecidos. Agendamentos já feitos não mudam.
+ * → 200 { id, serviceIds } · 400 lista inválida ou serviço inexistente · 404 profissional não existe
+ */
+staffRouter.put('/professionals/:id/services', requireAdmin, async (req, res) => {
+  const id = parseId(req.params.id, 'id', 'a profissional');
+  const raw = req.body?.serviceIds;
+  if (!Array.isArray(raw) || raw.length > 200 || !raw.every((s) => typeof s === 'string' && s && s.length <= 64)) {
+    throw new HttpError(400, 'Envie a lista de serviços (serviceIds).');
+  }
+  const serviceIds = [...new Set(raw)].sort();
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const pro = await client.query('SELECT id FROM professionals WHERE id = $1 FOR UPDATE', [id]);
+    if (!pro.rowCount) throw new HttpError(404, 'Profissional não encontrada.');
+
+    const found = await client.query('SELECT id FROM services WHERE id = ANY($1::text[])', [serviceIds]);
+    const missing = serviceIds.filter((s) => !found.rows.some((r) => r.id === s));
+    if (missing.length) throw new HttpError(400, `Serviço não encontrado: ${missing.join(', ')}.`);
+
+    await client.query('DELETE FROM professional_services WHERE professional_id = $1', [id]);
+    await client.query(
+      'INSERT INTO professional_services (professional_id, service_id) SELECT $1, unnest($2::text[])',
+      [id, serviceIds],
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  res.json({ id, serviceIds });
 });
 
 /**
