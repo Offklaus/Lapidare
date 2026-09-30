@@ -10,8 +10,15 @@ import { Loading, LoadError } from '../booking/steps/StepStatus.jsx';
 export function MockModeNotice() {
   return (
     <div className="notice notice--neutral">
-      O painel da equipe usa a API real. Em <code>frontend/.env</code>, defina <code>VITE_USE_MOCK=false</code> e
-      reinicie o front.
+      {/* Dica técnica só no computador de quem desenvolve; na demonstração publicada, texto para quem visita. */}
+      {import.meta.env.DEV ? (
+        <>
+          O painel da equipe usa a API real. Em <code>frontend/.env</code>, defina <code>VITE_USE_MOCK=false</code> e
+          reinicie o front.
+        </>
+      ) : (
+        'O painel da equipe não está disponível nesta demonstração.'
+      )}
     </div>
   );
 }

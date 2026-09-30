@@ -6,6 +6,9 @@ import { getProfessionals } from '../../services/api.js';
 import { getStaffBookings, markConfirmationSent, markReminderSent, updateBookingStatus } from '../../services/staffApi.js';
 import { confirmationMessage, reminderMessage, whatsappLink } from '../../lib/whatsapp.js';
 
+/** Endereço do site para os links das mensagens (inclui a subpasta, se houver). */
+const SITE_URL = window.location.origin + import.meta.env.BASE_URL;
+
 /** 'YYYY-MM-DDTHH:MM' → "sáb, 26 de set às 14:34" */
 const sentLabel = (stamp) => `${formatShortDate(stamp.slice(0, 10))} às ${stamp.slice(11, 16)}`;
 import { addDaysISO, cx, formatDuration, formatPhone, formatShortDate, toISODate } from '../../lib/format.js';
@@ -47,10 +50,10 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
   const sentAt = booking.confirmationSentAt;
   const confirmHref = whatsappLink(
     customer.phone,
-    confirmationMessage(booking, { siteUrl: window.location.origin, cancelMinHours }),
+    confirmationMessage(booking, { siteUrl: SITE_URL, cancelMinHours }),
   );
   const reminderSentAt = booking.reminderSentAt;
-  const reminderHref = whatsappLink(customer.phone, reminderMessage(booking, { siteUrl: window.location.origin }));
+  const reminderHref = whatsappLink(customer.phone, reminderMessage(booking, { siteUrl: SITE_URL }));
 
   const recordSent = (mark) => async () => {
     setError('');

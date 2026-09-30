@@ -41,7 +41,13 @@ export default function LoginPage() {
   if (USE_MOCK) {
     body = (
       <div className="notice notice--neutral">
-        O login usa a API real. Em <code>frontend/.env</code>, defina <code>VITE_USE_MOCK=false</code>.
+        {import.meta.env.DEV ? (
+          <>
+            O login usa a API real. Em <code>frontend/.env</code>, defina <code>VITE_USE_MOCK=false</code>.
+          </>
+        ) : (
+          'O login não está disponível nesta demonstração. Para ver um agendamento, use o código da confirmação.'
+        )}
       </div>
     );
   } else if (config.loading) {

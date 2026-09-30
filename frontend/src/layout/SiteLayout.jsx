@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 
 import { Facet } from '../components/index.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { USE_MOCK } from '../services/api.js';
 import useTheme from '../hooks/useTheme.js';
 
 function ThemeToggle() {
@@ -46,6 +47,11 @@ export default function SiteLayout() {
 
   return (
     <div className="site">
+      {USE_MOCK ? (
+        <p className="demo-banner" role="note">
+          Demonstração: os dados são fictícios e os agendamentos feitos aqui não são reais.
+        </p>
+      ) : null}
       <header className="site-header">
         <div className="container site-header__inner">
           <Link to="/" className="brand" aria-label="Lapidare Beauty — início">

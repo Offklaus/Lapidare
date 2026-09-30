@@ -18,8 +18,8 @@ export default function HomePage() {
           <span className="t-caps hero__eyebrow">Lapidare Beauty</span>
           <h1 className="t-display-xl">Lapidamos sua beleza com naturalidade</h1>
           <p className="t-body hero__lead">
-            Unhas, alongamento, sobrancelhas, cílios, nanopigmentação e laser. Escolha o serviço, a
-            profissional e o horário em poucos passos.
+            Unhas, alongamento, sobrancelhas, cílios, nanopigmentação e laser. Escolha a profissional, o
+            serviço e o horário em poucos passos.
           </p>
           <Link to="/agendar" className="lp-btn lp-btn--primary lp-btn--lg">
             Agendar horário

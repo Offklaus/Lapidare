@@ -9,6 +9,20 @@ Lapidare/
 └── backend/    Node + Express 5 + PostgreSQL, em JavaScript
 ```
 
+## Demonstração no GitHub Pages
+
+A cada push na `main` que mexa em `frontend/`, o workflow `.github/workflows/deploy-pages.yml`
+publica uma **demonstração** do site em `https://<usuario>.github.io/<repositorio>/`
+(neste repositório: https://offklaus.github.io/Lapidare/).
+
+- Roda em **modo de exemplo** (`VITE_USE_MOCK=true`): dados fictícios, sem API e sem banco. Dá para
+  navegar, agendar e acompanhar/cancelar pelo código; o painel da equipe e o login ficam indisponíveis.
+- Uma faixa no topo avisa que é demonstração e que os agendamentos não são reais.
+- **Ativar uma vez:** no GitHub, *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+  Em conta gratuita, o Pages exige repositório **público**.
+- O site mora numa subpasta: o build usa `VITE_BASE=/<repositorio>/` e copia o `index.html` para
+  `404.html`, para as rotas internas (ex.: `/agendar`) abrirem ao recarregar.
+
 ## Rodando o back-end
 
 Precisa do PostgreSQL rodando (testado com o 17).

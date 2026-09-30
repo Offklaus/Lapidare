@@ -21,6 +21,17 @@
   flex: 1;
 }
 
+/* Faixa do modo de exemplo (demonstração publicada no GitHub Pages) */
+.demo-banner {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
 /* Header */
 .site-header {
   background: var(--surface-brand);

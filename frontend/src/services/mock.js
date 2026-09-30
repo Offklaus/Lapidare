@@ -98,7 +98,9 @@ export async function getServices(professionalId) {
 
 export async function getProfessionals(serviceId) {
   await delay();
-  return prosFor(serviceId).map((p) => ({ ...p }));
+  // Sem serviço (1ª etapa do agendamento: profissional primeiro), todas; com serviço, só quem o faz.
+  const list = serviceId ? prosFor(serviceId) : PROFESSIONALS;
+  return list.map((p) => ({ ...p }));
 }
 
 export async function getSlots(params) {
