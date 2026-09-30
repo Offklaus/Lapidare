@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 
-import { Badge, Button, BOOKING_STATUS } from '../../components/index.js';
+import { Badge, Button, DateStrip, BOOKING_STATUS } from '../../components/index.js';
 import { getProfessionals } from '../../services/api.js';
 import { getStaffBookings, markConfirmationSent, markReminderSent, updateBookingStatus } from '../../services/staffApi.js';
 import { confirmationMessage, reminderMessage, whatsappLink } from '../../lib/whatsapp.js';
@@ -196,6 +196,24 @@ export default function StaffAgendaPage() {
     () => getStaffBookings({ from: tomorrow, to: tomorrow, professionalId: isAdmin ? professionalId : undefined }),
     [tomorrow, professionalId, isAdmin],
   );
+
+  // Faixa de dias (a mesma do agendamento): 7 dias antes a 20 depois da âncora, com a quantidade por dia.
+  // A âncora só muda quando a data escolhida sai da faixa (‹ ›, Hoje), para a faixa não pular a cada clique.
+  const [anchor, setAnchor] = useState(today);
+  useEffect(() => {
+    if (date < addDaysISO(anchor, -7) || date > addDaysISO(anchor, 20)) setAnchor(date);
+  }, [date, anchor]);
+  const stripFrom = addDaysISO(anchor, -7);
+  const stripTo = addDaysISO(anchor, 20);
+  const stripAgenda = useAsync(
+    () => getStaffBookings({ from: stripFrom, to: stripTo, professionalId: isAdmin ? professionalId : undefined }),
+    [stripFrom, stripTo, professionalId, isAdmin],
+  );
+  const stripDays = Array.from({ length: 28 }, (_, i) => ({ date: addDaysISO(stripFrom, i), available: true }));
+  const stripCounts = {};
+  for (const b of stripAgenda.data?.bookings || []) {
+    if (b.status !== 'cancelled') stripCounts[b.date] = (stripCounts[b.date] || 0) + 1;
+  }
   const remindersToSend = (tomorrowAgenda.data?.bookings || []).filter(
     (b) => b.actions.sendReminder && !b.reminderSentAt,
   ).length;
@@ -265,6 +283,17 @@ export default function StaffAgendaPage() {
           ) : null}
         </div>
       </header>
+
+      <div className="staff-dates">
+        <DateStrip
+          days={stripDays}
+          value={date}
+          onChange={setDate}
+          today={today}
+          counts={stripAgenda.data ? stripCounts : undefined}
+          label="Dia da agenda"
+        />
+      </div>
 
       <dl className="staff-counts" aria-label="Resumo do período">
         <div>
@@ -345,6 +374,7 @@ export default function StaffAgendaPage() {
                     onChanged={(next) => {
                       setUpdated((prev) => ({ ...prev, [next.id]: next }));
                       tomorrowAgenda.reload(); // atualiza o aviso de lembretes pendentes
+                      stripAgenda.reload(); // e a quantidade de atendimentos na faixa de dias
                     }}
                     onSessionExpired={sessionExpired}
                   />

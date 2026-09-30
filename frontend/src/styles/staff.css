@@ -223,6 +223,9 @@
 
 .staff-select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* Faixa de dias (a mesma do agendamento), largura toda */
+.staff-dates { min-width: 0; }
+
 .staff-counts {
   margin: 0;
   display: grid;

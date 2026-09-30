@@ -97,6 +97,15 @@
 .lp-date:disabled { cursor:not-allowed; background:var(--surface-sunken); border-color:var(--line); color:var(--ink-disabled); }
 .lp-date:disabled .lp-date__d { text-decoration:line-through; }
 .lp-date:disabled .lp-date__wd, .lp-date:disabled .lp-date__m { color:var(--ink-disabled); }
+/* Dia de hoje (painel da equipe): filete dourado embaixo */
+.lp-date.is-today:not(.is-selected) { border-color:var(--accent-line); box-shadow:inset 0 -2px 0 var(--accent-line); }
+/* Quantidade de atendimentos no dia (painel da equipe) */
+.lp-date__count { margin-top:2px; min-width:22px; padding:0 var(--space-1); border-radius:var(--radius-pill);
+  font-size:12px; line-height:18px; font-weight:600; font-variant-numeric:tabular-nums;
+  background:var(--surface-sunken); color:var(--ink); }
+.lp-date__count.is-zero { background:transparent; color:var(--ink-disabled); }
+.lp-date.is-selected .lp-date__count { background:var(--on-primary); color:var(--primary); }
+.lp-date.is-selected .lp-date__count.is-zero { background:transparent; color:var(--on-primary); opacity:.7; }
 
 /* TimeSlotGrid */
 .lp-slots { display:flex; flex-direction:column; gap:var(--space-5); font-family:var(--font-sans); }
