@@ -1,10 +1,13 @@
 /* Prepara o banco: cria o database (se faltar), aplica as migrations pendentes e insere os dados iniciais.
    Uso: npm run db:setup      (tudo)
-        npm run db:seed       (só os dados iniciais) */
+        npm run db:seed       (só os dados iniciais)
+        npm run db:migrate    (só as migrations — usado ao iniciar em produção) */
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import pg from 'pg';
+
+import { connectionOptions } from './connection.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(here, 'migrations');
@@ -12,9 +15,11 @@ const seedFile = path.join(here, 'seed.sql');
 
 const url = process.env.DATABASE_URL;
 const seedOnly = process.argv.includes('--seed-only');
+// Produção: só migrations, sem recolocar os dados iniciais (o salão pode ter apagado ou mudado serviços).
+const migrateOnly = process.argv.includes('--migrate-only');
 
 async function ensureDatabase() {
-  const probe = new pg.Client({ connectionString: url });
+  const probe = new pg.Client(connectionOptions(url));
   try {
     await probe.connect();
     await probe.end();
@@ -26,7 +31,7 @@ async function ensureDatabase() {
   const target = new URL(url);
   const dbName = decodeURIComponent(target.pathname.slice(1));
   target.pathname = '/postgres';
-  const admin = new pg.Client({ connectionString: target.toString() });
+  const admin = new pg.Client(connectionOptions(target.toString()));
   await admin.connect();
   await admin.query(`CREATE DATABASE "${dbName.replace(/"/g, '""')}"`);
   await admin.end();
@@ -74,11 +79,11 @@ async function main() {
 
   if (!seedOnly) await ensureDatabase();
 
-  const client = new pg.Client({ connectionString: url });
+  const client = new pg.Client(connectionOptions(url));
   await client.connect();
   try {
     if (!seedOnly) await migrate(client);
-    await seed(client);
+    if (!migrateOnly) await seed(client);
   } finally {
     await client.end();
   }

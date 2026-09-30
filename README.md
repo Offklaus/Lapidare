@@ -23,6 +23,46 @@ publica uma **demonstração** do site em `https://<usuario>.github.io/<reposito
 - O site mora numa subpasta: o build usa `VITE_BASE=/<repositorio>/` e copia o `index.html` para
   `404.html`, para as rotas internas (ex.: `/agendar`) abrirem ao recarregar.
 
+## Produção no Render + Supabase
+
+O site e a API rodam no **Render**; o banco é um Postgres no **Supabase**.
+O `render.yaml` na raiz é um **Blueprint** que cria o serviço web `lapidare`. É um serviço só — a API
+entrega o site compilado e responde em `/api` —, então site e API ficam no mesmo endereço e os
+cookies de login funcionam.
+
+**Supabase**
+1. Crie o projeto na mesma região do Render (ex.: Supabase `us-east-2` com Render *Ohio*):
+   cada consulta ao banco atravessa essa distância.
+2. *Connect* → **Session pooler** (porta 5432, usuário `postgres.<id-do-projeto>`). Use essa URL.
+   A conexão direta (`db.<id>.supabase.co`) só funciona por IPv6, e o Render não sai por IPv6.
+3. *Database Settings → SSL* → baixe o certificado (`.crt`).
+4. *Project Settings → Data API*: desligue. Nosso site não usa a API REST do Supabase. De qualquer
+   forma a migration `008` liga RLS em todas as tabelas, e essa API não lê nem grava nada.
+
+**Render**
+1. *New → Blueprint* → escolha este repositório e preencha:
+   - `DATABASE_URL`: a URL do Session pooler, com a senha do banco, **sem** `?sslmode`;
+   - `DATABASE_CA_CERT`: o conteúdo do `.crt` (a conexão é criptografada e o servidor é conferido);
+   - `GOOGLE_CLIENT_ID`.
+2. A cada início o serviço roda `npm run db:migrate` (só migrations novas, sem mexer nos dados do salão).
+3. No Google Cloud, adicione o endereço do site (ex.: `https://lapidare.onrender.com`) em
+   *Origens JavaScript autorizadas*.
+
+**Primeira vez:** coloque os dados iniciais e crie a conta da admin a partir do seu computador,
+com a URL do Session pooler (aqui `uselibpqcompat=true` criptografa sem precisar do certificado):
+```bash
+cd backend
+DATABASE_URL="<URL do Session pooler>?sslmode=require&uselibpqcompat=true" npm run db:setup
+DATABASE_URL="<URL do Session pooler>?sslmode=require&uselibpqcompat=true" npm run staff:create
+```
+No Windows (PowerShell): `$env:DATABASE_URL="<URL do Session pooler>?sslmode=require&uselibpqcompat=true"`
+antes dos comandos. A variável do terminal vale mais que o `backend/.env`.
+
+Proteções em produção: cabeçalhos de segurança (helmet, com política de conteúdo que só libera o
+próprio site, as fontes e o login do Google), `TRUST_PROXY=1` para os limites valerem por cliente,
+limites de agendamento (`BOOKING_MAX_DAYS_AHEAD`, `BOOKING_MAX_ACTIVE_PER_PHONE`) e RLS no banco.
+Tabela nova em migration futura: termine com `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`.
+
 ## Rodando o back-end
 
 Precisa do PostgreSQL rodando (testado com o 17).
@@ -37,7 +77,8 @@ Edite `backend/.env` e coloque a senha do seu Postgres em `DATABASE_URL`. Depois
 
 ```bash
 npm run db:setup   # cria o banco "lapidare", as tabelas e os dados de exemplo
-npm run dev        # API em http://localhost:3333 (reinicia sozinha ao salvar)
+npm run db:migrate # só aplica migrations novas (é o que roda ao iniciar em produção)
+npm run dev        # API em http://localhost:3333/api (reinicia sozinha ao salvar)
 npm test           # testes do cálculo de horários
 ```
 
@@ -49,7 +90,7 @@ Para o front usar a API real, crie `frontend/.env` com `VITE_USE_MOCK=false` e r
 backend/
 ├── src/
 │   ├── server.js              sobe o servidor
-│   ├── app.js                 Express: CORS, JSON, rotas e tratamento de erros
+│   ├── app.js                 Express: cabeçalhos de segurança, CORS, rotas em /api, site compilado e erros
 │   ├── config.js              variáveis de ambiente
 │   ├── db/
 │   │   ├── pool.js            conexão com o Postgres
@@ -87,7 +128,7 @@ Enquanto o back-end não existe, o front usa dados de exemplo (`src/services/moc
 Para apontar para o servidor real, copie `.env.example` para `.env` e ajuste:
 
 ```
-VITE_API_URL=http://localhost:3333
+VITE_API_URL=http://localhost:3333/api
 VITE_USE_MOCK=false
 ```
 
@@ -119,13 +160,16 @@ frontend/src/
 
 ## Contrato com o back-end
 
+Todas as rotas da API ficam sob **`/api`** (ex.: `GET /api/services`). O resto do endereço é do site:
+em produção a própria API entrega o front compilado (`frontend/dist`).
+
 | Método | Rota | Resposta |
 | --- | --- | --- |
 | GET | `/services?professionalId=` | `[{ id, category, name, description, duration, price }]` (duração em minutos, preço em reais) · com `professionalId`, só os serviços dessa profissional; sem ele ou `any`, todos |
 | GET | `/professionals?serviceId=` | `[{ id, name, role, specialties, photo }]` |
 | GET | `/availability?serviceId=&professionalId=\|any&from=YYYY-MM-DD&days=14` | `{ days: [{ date, available }] }` |
-| GET | `/availability/slots?serviceId=&professionalId=&date=` | `[{ time: 'HH:MM', status: 'available'\|'booked'\|'blocked', professionalId }]` |
-| POST | `/bookings` | `201 { id, code: 'K7QM-4XZP', status: 'confirmed'\|'pending', professionalId }` · `409` se o horário foi reservado enquanto a cliente escolhia |
+| GET | `/availability/slots?serviceId=&professionalId=&date=` | `[{ time: 'HH:MM', status: 'available'\|'booked'\|'blocked', professionalId }]` · nas duas rotas de disponibilidade, dias além de `BOOKING_MAX_DAYS_AHEAD` vêm indisponíveis/sem horários e há `429` após 120 consultas por minuto do mesmo IP |
+| POST | `/bookings` | `201 { id, code: 'K7QM-4XZP', status: 'confirmed'\|'pending', professionalId }` · `409` se o horário foi reservado enquanto a cliente escolhia ou se o WhatsApp já tem `BOOKING_MAX_ACTIVE_PER_PHONE` agendamentos futuros · `400` além de `BOOKING_MAX_DAYS_AHEAD` dias · `429` após 10 agendamentos por hora do mesmo IP |
 | GET | `/bookings/:code` | `{ code, status, date, time, isPast, customerFirstName, service: { name, duration, price }, professional: { name }, cancellation: { allowed, deadline: { date, time }, minHours } }` · `404` se o código não existe · `429` após 30 consultas em 10 min do mesmo IP |
 | POST | `/bookings/:code/cancel` | corpo `{ phoneLast4 }` (4 últimos dígitos do WhatsApp) → `200` com o agendamento atualizado · `403` dígitos não conferem · `409` já cancelado, já aconteceu ou a menos de `CANCEL_MIN_HOURS` do horário · `429` após 5 tentativas por código por hora ou 10 por IP em 15 min |
 | GET | `/health` | `{ ok: true }` |

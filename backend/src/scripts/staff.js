@@ -6,6 +6,7 @@
 import readline from 'node:readline';
 import pg from 'pg';
 
+import { connectionOptions } from '../db/connection.js';
 import { MIN_PASSWORD_LENGTH, hashPassword } from '../lib/password.js';
 
 const [command, ...rest] = process.argv.slice(2);
@@ -125,7 +126,7 @@ async function main() {
     console.error('Defina DATABASE_URL no arquivo backend/.env.');
     process.exit(1);
   }
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  const client = new pg.Client(connectionOptions(process.env.DATABASE_URL));
   await client.connect();
   try {
     await COMMANDS[command](client);

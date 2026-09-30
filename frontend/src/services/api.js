@@ -3,7 +3,8 @@
    Com VITE_USE_MOCK=true (padrão) usa src/services/mock.js no lugar do servidor. */
 import * as mock from './mock.js';
 
-const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/$/, '');
+// Local: http://localhost:3333/api. Produção (site e API no mesmo serviço): "/api", relativo ao próprio site.
+const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333/api').replace(/\/$/, '');
 export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false';
 
 export class ApiError extends Error {
@@ -17,7 +18,7 @@ export class ApiError extends Error {
 
 /** credentials: 'include' envia o cookie de sessão (painel da equipe). */
 export async function request(path, { method = 'GET', params, body, credentials } = {}) {
-  const url = new URL(`${BASE_URL}${path}`);
+  const url = new URL(`${BASE_URL}${path}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);

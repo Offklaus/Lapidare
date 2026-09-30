@@ -1,0 +1,45 @@
+# Blueprint do Render: Dashboard → New → Blueprint → escolha este repositório.
+# Banco de dados no Supabase (Session pooler); veja "Produção no Render + Supabase" no README.
+# Um serviço só: a API (Express) entrega o site compilado e responde em /api.
+# Site e API no mesmo endereço = o cookie de login (equipe e clientes) funciona sem ajustes.
+
+services:
+  - type: web
+    name: lapidare
+    runtime: node
+    plan: free
+    # Scripts do package.json da raiz: compila o site e instala só o necessário da API.
+    buildCommand: npm run build
+    # Aplica as migrations pendentes (sem recolocar os dados iniciais) e sobe a API.
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      # Supabase → Connect → Session pooler (porta 5432). Preencha no painel do Render.
+      - key: DATABASE_URL
+        sync: false
+      # Certificado do Supabase (Database Settings → SSL), conteúdo do .crt. Confere o servidor.
+      - key: DATABASE_CA_CERT
+        sync: false
+      - key: SALON_TIMEZONE
+        value: America/Sao_Paulo
+      - key: CANCEL_MIN_HOURS
+        value: "24"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: BOOKING_MAX_DAYS_AHEAD
+        value: "60"
+      - key: BOOKING_MAX_ACTIVE_PER_PHONE
+        value: "3"
+      # Usadas na compilação do site (Vite): API relativa ao próprio endereço.
+      - key: VITE_USE_MOCK
+        value: "false"
+      - key: VITE_API_URL
+        value: /api
+      # Preencha no painel do Render (não fica no git).
+      - key: GOOGLE_CLIENT_ID
+        sync: false

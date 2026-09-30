@@ -6,6 +6,7 @@ import { formatCode, generateCode, normalizeCode } from '../lib/bookingCode.js';
 import { findCustomer } from '../lib/customerAuth.js';
 import { HttpError } from '../lib/errors.js';
 import { rateLimit } from '../lib/rateLimit.js';
+import { dayNumber } from '../lib/time.js';
 import { parseCustomer, parseDate, parseId, parseProfessionalId, parseTime } from '../lib/validate.js';
 import { computeSlots } from '../services/availability.js';
 import { loadSchedule } from '../services/schedule.js';
@@ -83,7 +84,14 @@ async function findPublicBooking(code) {
  * { serviceId, professionalId | 'any', date: 'YYYY-MM-DD', time: 'HH:MM', customer: { name, phone, email? } }
  * → 201 { id, code, status, professionalId } · 409 se o horário não está mais livre
  */
-bookingsRouter.post('/', async (req, res) => {
+// Contra agendamentos falsos em massa: poucos agendamentos por hora vindos do mesmo endereço.
+const createLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Muitos agendamentos seguidos. Tente de novo mais tarde ou fale com o salão.',
+});
+
+bookingsRouter.post('/', createLimit, async (req, res) => {
   const body = req.body || {};
   const serviceId = parseId(body.serviceId, 'serviceId', 'o serviço');
   const professionalId = parseProfessionalId(body.professionalId);
@@ -93,6 +101,22 @@ bookingsRouter.post('/', async (req, res) => {
 
   // Confere com a mesma regra que gerou os horários mostrados para a cliente.
   const { service, pros, nowAbs } = await loadSchedule({ serviceId, professionalId, from: date, to: date });
+  if (dayNumber(date) > Math.floor(nowAbs / 1440) + config.bookingMaxDaysAhead) {
+    throw new HttpError(400, `Agendamentos podem ser feitos até ${config.bookingMaxDaysAhead} dias à frente.`);
+  }
+
+  // Um mesmo WhatsApp não segura a agenda: no máximo N horários futuros marcados.
+  const { rows: active } = await query(
+    `SELECT count(*)::int AS n FROM bookings
+      WHERE customer_phone = $1 AND status IN ('pending', 'confirmed') AND starts_at > now()`,
+    [customer.phone],
+  );
+  if (active[0].n >= config.bookingMaxActivePerPhone) {
+    throw new HttpError(
+      409,
+      `Este WhatsApp já tem ${active[0].n} agendamentos marcados. Para marcar mais, fale com o salão.`,
+    );
+  }
   const slot = computeSlots({ pros, date, duration: service.duration, step: config.slotStepMin, nowAbs }).find(
     (s) => s.time === time,
   );

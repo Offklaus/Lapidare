@@ -18,6 +18,15 @@ export const config = {
   staffSessionDays: Number(process.env.STAFF_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.STAFF_SESSION_DAYS)) : 7,
   // Login das clientes com Google: Client ID criado no Google Cloud (vazio = login com Google desligado).
   googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+  // Proxy na frente da API (Render, Nginx…): quantos saltos confiar para req.ip ser o IP real da cliente.
+  // Padrão: 1 em produção, nenhum no computador. Sem isso, todas as clientes dividem os limites de tentativa.
+  trustProxy: process.env.TRUST_PROXY !== undefined && process.env.TRUST_PROXY !== ''
+    ? Number(process.env.TRUST_PROXY) || false
+    : process.env.NODE_ENV === 'production' ? 1 : false,
+  // Proteção da agenda contra agendamentos falsos em massa.
+  bookingMaxDaysAhead: Number(process.env.BOOKING_MAX_DAYS_AHEAD) > 0 ? Math.floor(Number(process.env.BOOKING_MAX_DAYS_AHEAD)) : 60,
+  bookingMaxActivePerPhone:
+    Number(process.env.BOOKING_MAX_ACTIVE_PER_PHONE) > 0 ? Math.floor(Number(process.env.BOOKING_MAX_ACTIVE_PER_PHONE)) : 3,
   customerSessionDays:
     Number(process.env.CUSTOMER_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.CUSTOMER_SESSION_DAYS)) : 30,
   maxDays: 31,

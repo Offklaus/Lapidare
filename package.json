@@ -1,0 +1,12 @@
+{
+  "name": "lapidare",
+  "private": true,
+  "description": "Comandos de produção (Render): compila o site e sobe a API, que entrega o site em / e responde em /api.",
+  "scripts": {
+    "build": "npm ci --prefix frontend --include=dev && npm run build --prefix frontend && npm ci --prefix backend --omit=dev",
+    "start": "npm run db:migrate --prefix backend && npm start --prefix backend"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}
