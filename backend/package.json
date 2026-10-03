@@ -9,6 +9,8 @@
     "db:setup": "node --env-file-if-exists=.env src/db/setup.js",
     "db:seed": "node --env-file-if-exists=.env src/db/setup.js --seed-only",
     "db:migrate": "node --env-file-if-exists=.env src/db/setup.js --migrate-only",
+    "db:setup:prod": "node --env-file=.env.production src/db/setup.js",
+    "staff:create:prod": "node --env-file=.env.production src/scripts/staff.js create",
     "staff:create": "node --env-file-if-exists=.env src/scripts/staff.js create",
     "staff:password": "node --env-file-if-exists=.env src/scripts/staff.js password",
     "staff:deactivate": "node --env-file-if-exists=.env src/scripts/staff.js deactivate",

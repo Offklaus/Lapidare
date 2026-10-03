@@ -4,3 +4,7 @@ dist/
 .env.local
 *.log
 .DS_Store
+
+# Segredos de cada ambiente (.env.production etc.); só o modelo vai para o git
+.env.*
+!.env.example
