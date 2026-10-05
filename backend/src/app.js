@@ -6,6 +6,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 import { config } from './config.js';
+import { clientIp } from './lib/clientIp.js';
 import { HttpError } from './lib/errors.js';
 import { servicesRouter } from './routes/services.js';
 import { professionalsRouter } from './routes/professionals.js';
@@ -19,6 +20,8 @@ export const app = express();
 app.disable('x-powered-by');
 // Atrás do proxy do Render, req.ip passa a ser o IP real da cliente (limites de tentativa por pessoa).
 app.set('trust proxy', config.trustProxy);
+// IP real para os limites de tentativa (no Render: CLIENT_IP_HEADER=cf-connecting-ip). Ver lib/clientIp.js.
+app.use(clientIp(config.clientIpHeader));
 
 // Cabeçalhos de segurança. A política de conteúdo libera só o próprio site, as fontes do Google
 // e o botão "Fazer login com o Google" (accounts.google.com).
@@ -102,6 +105,9 @@ app.use((err, req, res, next) => {
   }
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ message: 'O corpo da requisição não é um JSON válido.' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'Dados grandes demais. Confira o que foi enviado.' });
   }
   // Endereço malformado (ex.: %E0%A4%A) é erro de quem pediu, não do servidor.
   if (err instanceof URIError || err.status === 400) {

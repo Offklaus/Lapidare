@@ -1,6 +1,6 @@
 /* Limite de requisições por chave (padrão: IP), em memória — vale para um servidor só e zera ao reiniciar.
-   Atrás de proxy/CDN em produção, configure app.set('trust proxy', …) para req.ip ser o IP real. */
-export function rateLimit({ windowMs, max, message, key = (req) => req.ip }) {
+   Chave padrão: req.clientIp (lib/clientIp.js: IP real atrás do Cloudflare/Render) ou, sem ele, req.ip. */
+export function rateLimit({ windowMs, max, message, key = (req) => req.clientIp || req.ip }) {
   const hits = new Map();
 
   setInterval(() => {

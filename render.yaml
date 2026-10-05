@@ -29,6 +29,9 @@ services:
         value: America/Sao_Paulo
       - key: CANCEL_MIN_HOURS
         value: "24"
+      # IP real da cliente para os limites de tentativa (o Render passa pelo Cloudflare).
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: TRUST_PROXY
         value: "1"
       - key: BOOKING_MAX_DAYS_AHEAD

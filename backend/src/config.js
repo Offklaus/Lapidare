@@ -23,6 +23,8 @@ export const config = {
   trustProxy: process.env.TRUST_PROXY !== undefined && process.env.TRUST_PROXY !== ''
     ? Number(process.env.TRUST_PROXY) || false
     : process.env.NODE_ENV === 'production' ? 1 : false,
+  // Cabeçalho com o IP real da cliente, posto pela CDN (Render = Cloudflare → cf-connecting-ip). Vazio = req.ip.
+  clientIpHeader: (process.env.CLIENT_IP_HEADER || '').trim(),
   // Proteção da agenda contra agendamentos falsos em massa.
   bookingMaxDaysAhead: Number(process.env.BOOKING_MAX_DAYS_AHEAD) > 0 ? Math.floor(Number(process.env.BOOKING_MAX_DAYS_AHEAD)) : 60,
   bookingMaxActivePerPhone:
