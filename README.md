@@ -214,6 +214,12 @@ Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include
 | GET | `/staff/professionals` | só admin → `[{ id, name, role, active, serviceIds }]` · `403` para perfil profissional |
 | PUT | `/staff/professionals/:id/services` | só admin · corpo `{ serviceIds: [...] }` substitui os serviços que a profissional faz (filtra os serviços e os horários do agendamento) → `{ id, serviceIds }` · `400` serviço inexistente |
 | PATCH | `/staff/professionals/:id` | só admin · corpo `{ name, role }` (nome 2–60, função até 80 caracteres) → profissional atualizada · `403` para perfil profissional |
+| GET | `/staff/services` | só admin → `[{ id, category, name, description, duration, price, active, professionalCount }]` (inclui os fora do agendamento; `professionalCount: 0` = nenhuma profissional faz, a cliente não vê) |
+| POST | `/staff/services` | só admin · corpo `{ name, category, description?, duration, price, professionalIds? }` (preço em reais, duração 5–600 min) → `201` com o serviço; o `id` vem do nome (`esmaltacao-em-gel`) |
+| PATCH | `/staff/services/:id` | só admin · corpo `{ name, category, description, duration, price, active }` → serviço atualizado · `active: false` tira do agendamento sem apagar o histórico |
+
+Agendamentos guardam o **preço** do momento em que foram feitos (`bookings.price_cents`) e a duração vem do
+horário reservado: mudar preço ou duração na aba **Serviços** vale só para os próximos agendamentos.
 | PATCH | `/staff/bookings/:id/status` | corpo `{ status: 'done'\|'no_show'\|'cancelled' }` → agendamento atualizado · cancelar só antes do horário começar; concluído/faltou só depois · `409` quando não é permitido |
 
 Contas são criadas pelo terminal (a senha é digitada sem aparecer):

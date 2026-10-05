@@ -18,11 +18,11 @@ const NOT_FOUND = 'Não encontramos agendamento com esse código. Confira as let
 
 const INSERT_BOOKING = `
   INSERT INTO bookings (code, service_id, professional_id, starts_at, ends_at, status,
-                        customer_name, customer_phone, customer_email, customer_id)
+                        customer_name, customer_phone, customer_email, customer_id, price_cents)
   VALUES ($1, $2, $3,
           ($4::date + $5::time) AT TIME ZONE $6,
           ($4::date + $5::time + make_interval(mins => $7::int)) AT TIME ZONE $6,
-          'confirmed', $8, $9, $10, $11)
+          'confirmed', $8, $9, $10, $11, $12)
   RETURNING id, code, status, professional_id`;
 
 /** Insere com um código novo; se o código sorteado já existir (raríssimo), sorteia outro. */
@@ -51,7 +51,8 @@ async function findPublicBooking(code) {
             b.ends_at < now() AS is_past,
             (b.status IN ('pending', 'confirmed') AND now() <= b.starts_at - make_interval(hours => $3::int)) AS can_cancel,
             to_char((b.starts_at - make_interval(hours => $3::int)) AT TIME ZONE $2, 'YYYY-MM-DD"T"HH24:MI') AS cancel_until,
-            s.name AS service_name, s.duration_min, s.price_cents,
+            s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
+            (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
             p.name AS professional_name
        FROM bookings b
        JOIN services s ON s.id = b.service_id
@@ -129,7 +130,7 @@ bookingsRouter.post('/', createLimit, async (req, res) => {
   try {
     const booking = await insertBooking([
       service.id, slot.professionalId, date, time, config.timezone, service.duration,
-      customer.name, customer.phone, customer.email, account?.id ?? null,
+      customer.name, customer.phone, customer.email, account?.id ?? null, service.priceCents,
     ]);
     res.status(201).json({
       id: booking.id,

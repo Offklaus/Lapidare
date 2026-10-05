@@ -39,3 +39,13 @@ export const updateProfessionalServices = (id, serviceIds) =>
 /** PATCH /staff/bookings/:id/status { status: 'done' | 'no_show' | 'cancelled' } → agendamento atualizado */
 export const updateBookingStatus = (id, status) =>
   request(`/staff/bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status }, ...withSession });
+
+/** GET /staff/services → [{ id, category, name, description, duration, price, active, professionalCount }] (só admin) */
+export const getStaffServices = () => request('/staff/services', withSession);
+
+/** POST /staff/services { name, category, description, duration, price, professionalIds } → serviço criado (só admin) */
+export const createService = (service) => request('/staff/services', { method: 'POST', body: service, ...withSession });
+
+/** PATCH /staff/services/:id { name, category, description, duration, price, active } → serviço atualizado (só admin) */
+export const updateService = (id, service) =>
+  request(`/staff/services/${encodeURIComponent(id)}`, { method: 'PATCH', body: service, ...withSession });

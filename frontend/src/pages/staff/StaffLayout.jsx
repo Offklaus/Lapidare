@@ -66,6 +66,9 @@ export default function StaffLayout() {
               <NavLink to="/equipe/profissionais" className="site-nav__link">
                 Profissionais
               </NavLink>
+              <NavLink to="/equipe/servicos" className="site-nav__link">
+                Serviços
+              </NavLink>
             </nav>
           ) : null}
           {user ? (

@@ -66,7 +66,8 @@ customerRouter.get('/bookings', async (req, res) => {
             to_char(b.starts_at AT TIME ZONE $3, 'HH24:MI') AS time,
             b.ends_at < now() AS is_past,
             (b.status IN ('pending', 'confirmed') AND now() <= b.starts_at - make_interval(hours => $4::int)) AS can_cancel,
-            s.name AS service_name, s.duration_min, s.price_cents,
+            s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
+            (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
             p.name AS professional_name
        FROM bookings b
        JOIN services s ON s.id = b.service_id

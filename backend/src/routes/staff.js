@@ -7,6 +7,7 @@ import { formatCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import { rateLimit } from '../lib/rateLimit.js';
+import { parseServiceInput, serviceSlug } from '../lib/serviceInput.js';
 import {
   SESSION_COOKIE,
   createSession,
@@ -82,7 +83,8 @@ const STAFF_BOOKING_SELECT = `
          to_char(b.reminder_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS reminder_sent_at,
          (b.starts_at AT TIME ZONE $1)::date - (now() AT TIME ZONE $1)::date AS days_until,
          b.customer_name, b.customer_phone, b.customer_email,
-         s.name AS service_name, s.duration_min, s.price_cents,
+         s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
+         (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
          p.id AS professional_id, p.name AS professional_name
     FROM bookings b
     JOIN services s ON s.id = b.service_id
@@ -328,4 +330,104 @@ staffRouter.patch('/professionals/:id', requireAdmin, async (req, res) => {
   );
   if (!rows.length) throw new HttpError(404, 'Profissional não encontrada.');
   res.json(rows[0]);
+});
+
+/* ---------- Serviços e preços (só admin) ---------- */
+
+const SERVICE_SELECT = `
+  SELECT s.id, s.category, s.name, s.description, s.duration_min, s.price_cents, s.active,
+         (SELECT count(*)::int
+            FROM professional_services ps
+            JOIN professionals p ON p.id = ps.professional_id AND p.active
+           WHERE ps.service_id = s.id) AS professional_count
+    FROM services s`;
+
+const toStaffService = (s) => ({
+  id: s.id,
+  category: s.category,
+  name: s.name,
+  description: s.description,
+  duration: s.duration_min,
+  price: s.price_cents / 100,
+  active: s.active,
+  professionalCount: s.professional_count, // 0 = nenhuma profissional faz: não aparece no agendamento
+});
+
+/** GET /staff/services → [{ id, category, name, description, duration, price, active, professionalCount }] (inclui inativos) */
+staffRouter.get('/services', requireAdmin, async (req, res) => {
+  const { rows } = await query(`${SERVICE_SELECT} ORDER BY s.sort, s.name`);
+  res.json(rows.map(toStaffService));
+});
+
+/**
+ * POST /staff/services { name, category, description?, duration, price, professionalIds? }
+ * Cria um serviço (preço em reais, duração em minutos). professionalIds: quem já faz o serviço.
+ * → 201 com o serviço · 400 dados inválidos ou profissional inexistente
+ */
+staffRouter.post('/services', requireAdmin, async (req, res) => {
+  const input = parseServiceInput(req.body);
+  const raw = req.body?.professionalIds ?? [];
+  if (!Array.isArray(raw) || raw.length > 50 || !raw.every((p) => typeof p === 'string' && p && p.length <= 64)) {
+    throw new HttpError(400, 'Envie a lista de profissionais (professionalIds).');
+  }
+  const professionalIds = [...new Set(raw)];
+  const base = serviceSlug(input.name);
+
+  const client = await pool.connect();
+  let id;
+  try {
+    await client.query('BEGIN');
+    const found = await client.query('SELECT id FROM professionals WHERE id = ANY($1::text[])', [professionalIds]);
+    const missing = professionalIds.filter((p) => !found.rows.some((r) => r.id === p));
+    if (missing.length) throw new HttpError(400, `Profissional não encontrada: ${missing.join(', ')}.`);
+
+    // id a partir do nome; se já existir (ex.: serviço desativado com o mesmo nome), ganha um número.
+    const taken = await client.query('SELECT id FROM services WHERE id = $1 OR id LIKE $2', [base, `${base}-%`]);
+    id = base;
+    for (let n = 2; taken.rows.some((r) => r.id === id); n += 1) id = `${base}-${n}`;
+
+    await client.query(
+      `INSERT INTO services (id, category, name, description, duration_min, price_cents, active, sort)
+       VALUES ($1, $2, $3, $4, $5, $6, true, (SELECT COALESCE(max(sort), 0) + 10 FROM services))`,
+      [id, input.category, input.name, input.description, input.durationMin, input.priceCents],
+    );
+    if (professionalIds.length) {
+      await client.query(
+        'INSERT INTO professional_services (professional_id, service_id) SELECT unnest($1::text[]), $2',
+        [professionalIds, id],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err.code === '23505') throw new HttpError(409, 'Outro serviço com esse nome acabou de ser criado. Tente de novo.');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  const { rows } = await query(`${SERVICE_SELECT} WHERE s.id = $1`, [id]);
+  res.status(201).json(toStaffService(rows[0]));
+});
+
+/**
+ * PATCH /staff/services/:id { name, category, description, duration, price, active }
+ * Muda o serviço para os próximos agendamentos. Agendamentos já feitos guardam o preço e o horário
+ * combinados. active: false tira o serviço do agendamento (o histórico continua).
+ * → 200 com o serviço · 404 serviço não existe
+ */
+staffRouter.patch('/services/:id', requireAdmin, async (req, res) => {
+  const id = parseId(req.params.id, 'id', 'o serviço');
+  const input = parseServiceInput(req.body);
+
+  const { rowCount } = await query(
+    `UPDATE services
+        SET name = $2, category = $3, description = $4, duration_min = $5, price_cents = $6, active = $7
+      WHERE id = $1`,
+    [id, input.name, input.category, input.description, input.durationMin, input.priceCents, input.active],
+  );
+  if (!rowCount) throw new HttpError(404, 'Serviço não encontrado.');
+
+  const { rows } = await query(`${SERVICE_SELECT} WHERE s.id = $1`, [id]);
+  res.json(toStaffService(rows[0]));
 });

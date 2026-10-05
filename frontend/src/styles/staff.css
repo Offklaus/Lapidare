@@ -115,6 +115,104 @@
   .staff-pro__actions { grid-column: 1 / -1; flex-direction: row; align-items: center; padding-top: 0; }
 }
 
+/* Serviços e preços (admin) */
+.staff-svc-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.staff-svc-group + .staff-svc-group { margin-top: var(--space-3); }
+
+.staff-svc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.staff-svc.is-inactive { background: var(--surface-sunken); box-shadow: none; }
+.staff-svc--new { border-color: var(--accent-line); }
+
+.staff-svc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.staff-svc__head h3 { min-width: 0; }
+
+.staff-svc__meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Fechado: uma linha com nome, preço/duração e o botão Editar */
+.staff-svc--row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: none;
+}
+
+.staff-svc--row .staff-svc__warn { grid-column: 1; margin: 0; color: var(--warning); }
+.staff-svc--row .staff-svc__actions { grid-column: 2; grid-row: 1 / span 2; }
+
+.staff-svc__price {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.staff-svc__tag {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--ink-muted);
+}
+
+.staff-svc__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.staff-svc__wide { grid-column: 1 / -1; }
+
+.staff-svc__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .staff-svc { padding: var(--space-4); }
+  .staff-svc__fields { grid-template-columns: minmax(0, 1fr); }
+  .staff-svc__fields .lp-field__input { font-size: 16px; } /* evita o zoom automático do iPhone */
+  .staff-svc__actions { flex-direction: column; align-items: stretch; }
+  .staff-svc__actions .lp-btn { width: 100%; }
+  /* Linha fechada no celular: Editar continua ao lado, com área de toque de 44px */
+  .staff-svc--row { padding: var(--space-3); }
+  .staff-svc--row .staff-svc__actions { flex-direction: row; align-items: center; }
+  .staff-svc--row .staff-svc__actions .lp-btn { width: auto; min-height: 44px; }
+  .staff-svc__meta { margin-left: 0; width: 100%; }
+  .staff-page__head > .lp-btn { width: 100%; }
+}
+
 /* Login */
 .staff-login {
   min-height: 100vh;

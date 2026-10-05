@@ -14,6 +14,7 @@ import StaffLayout from './pages/staff/StaffLayout.jsx';
 import StaffLoginPage from './pages/staff/StaffLoginPage.jsx';
 import StaffAgendaPage from './pages/staff/StaffAgendaPage.jsx';
 import StaffProfessionalsPage from './pages/staff/StaffProfessionalsPage.jsx';
+import StaffServicesPage from './pages/staff/StaffServicesPage.jsx';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="equipe" element={<StaffLayout />}>
         <Route index element={<StaffAgendaPage />} />
         <Route path="profissionais" element={<StaffProfessionalsPage />} />
+        <Route path="servicos" element={<StaffServicesPage />} />
       </Route>
     </Routes>
   );

@@ -14,12 +14,15 @@ export async function salonNow() {
 
 /**
  * Serviço + profissionais que o fazem (todas ou uma) + expediente, agendamentos e folgas entre `from` e `to`.
- * Retorna { service: { id, duration }, pros: [...], nowAbs } no formato de services/availability.js.
+ * Retorna { service: { id, duration, priceCents }, pros: [...], nowAbs } no formato de services/availability.js.
  */
 export async function loadSchedule({ serviceId, professionalId, from, to }) {
-  const { rows: services } = await query('SELECT id, duration_min FROM services WHERE id = $1 AND active', [serviceId]);
+  const { rows: services } = await query(
+    'SELECT id, duration_min, price_cents FROM services WHERE id = $1 AND active',
+    [serviceId],
+  );
   if (!services.length) throw new HttpError(404, 'Não encontramos esse serviço. Volte e escolha outro.');
-  const service = { id: services[0].id, duration: services[0].duration_min };
+  const service = { id: services[0].id, duration: services[0].duration_min, priceCents: services[0].price_cents };
 
   const params = [serviceId];
   let onlyOne = '';
