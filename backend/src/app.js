@@ -101,7 +101,7 @@ app.use((req, res) => {
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   if (err instanceof HttpError) {
-    return res.status(err.status).json({ message: err.message });
+    return res.status(err.status).json({ ...err.details, message: err.message });
   }
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ message: 'O corpo da requisição não é um JSON válido.' });

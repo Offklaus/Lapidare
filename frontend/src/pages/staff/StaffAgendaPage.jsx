@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 
-import { Badge, Button, DateStrip, BOOKING_STATUS } from '../../components/index.js';
+import { Badge, Button, DateStrip, Toast, BOOKING_STATUS } from '../../components/index.js';
 import { getProfessionals } from '../../services/api.js';
-import { getStaffBookings, markConfirmationSent, markReminderSent, updateBookingStatus } from '../../services/staffApi.js';
+import {
+  getFreeSlots,
+  getStaffBookings,
+  markConfirmationSent,
+  markReminderSent,
+  updateBookingStatus,
+} from '../../services/staffApi.js';
+import { ORIGIN_LABEL } from '../../lib/origins.js';
+import NewBookingDialog from './NewBookingDialog.jsx';
 import { confirmationMessage, reminderMessage, whatsappLink } from '../../lib/whatsapp.js';
 
 /** Endereço do site para os links das mensagens (inclui a subpasta, se houver). */
@@ -83,6 +91,11 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
           {booking.service.name} · {formatDuration(booking.service.duration)}
           {showProfessional ? ` · ${booking.professional.name}` : ''}
         </span>
+        {booking.services?.length > 1 ? (
+          <span className="t-caption t-muted staff-booking__sequence">
+            {booking.services.map((s) => `${s.time} ${s.name}`).join(' · ')}
+          </span>
+        ) : null}
         <span className="staff-booking__contact t-body-sm">
           <a href={`https://wa.me/55${customer.phone}`} target="_blank" rel="noreferrer">
             WhatsApp {formatPhone(customer.phone)}
@@ -90,6 +103,13 @@ function BookingRow({ booking, showProfessional, cancelMinHours, onChanged, onSe
           {customer.email ? <a href={`mailto:${customer.email}`}>{customer.email}</a> : null}
           <span className="t-muted">Código {booking.code}</span>
         </span>
+        {booking.origin && booking.origin !== 'site' ? (
+          <span className="t-caption t-muted">
+            Marcado pela recepção · {ORIGIN_LABEL[booking.origin] || booking.origin}
+            {booking.fitIn ? ' · encaixe' : ''}
+          </span>
+        ) : null}
+        {booking.notes ? <span className="t-body-sm staff-booking__notes">Obs.: {booking.notes}</span> : null}
         {actions.sendConfirmation && sentAt ? (
           <span className="t-caption staff-booking__sent">Confirmação enviada {sentLabel(sentAt)}</span>
         ) : null}
@@ -180,6 +200,8 @@ export default function StaffAgendaPage() {
   const [date, setDate] = useState(today);
   const [professionalId, setProfessionalId] = useState('all');
   const [updated, setUpdated] = useState({}); // id → agendamento que acabou de mudar
+  const [newBooking, setNewBooking] = useState(null); // { key, initial } com o formulário aberto
+  const [toast, setToast] = useState('');
 
   const to = view === 'day' ? date : addDaysISO(date, 6);
   const step = view === 'day' ? 1 : 7;
@@ -189,6 +211,13 @@ export default function StaffAgendaPage() {
     [date, to, professionalId, isAdmin],
   );
   const pros = useAsync(() => (isAdmin ? getProfessionals() : Promise.resolve([])), [isAdmin]);
+  // Horários livres do dia (só admin, na visão Dia): clicar abre o agendamento já preenchido.
+  const showFree = isAdmin && view === 'day' && date >= today;
+  const freeSlots = useAsync(
+    () => (showFree ? getFreeSlots({ date, professionalId }) : Promise.resolve(null)),
+    [showFree, date, professionalId],
+  );
+  const openNewBooking = (initial) => setNewBooking({ key: Date.now(), initial: initial || { date: date >= today ? date : today } });
 
   // Lembretes pendentes de amanhã, para avisar mesmo com a agenda de hoje aberta.
   const tomorrow = addDaysISO(today, 1);
@@ -247,6 +276,11 @@ export default function StaffAgendaPage() {
           <span className="t-caps t-accent">{isAdmin ? 'Agenda do salão' : 'Minha agenda'}</span>
           <h1 className="t-display-l">{title}</h1>
         </div>
+        {isAdmin ? (
+          <Button className="staff-new-booking" onClick={() => openNewBooking()}>
+            Novo agendamento
+          </Button>
+        ) : null}
 
         <div className="staff-toolbar">
           <div className="staff-segment" role="group" aria-label="Período">
@@ -345,6 +379,36 @@ export default function StaffAgendaPage() {
         </div>
       ) : null}
 
+      {showFree && freeSlots.data ? (
+        <section className="staff-free" aria-labelledby="staff-free-title">
+          <h2 id="staff-free-title" className="t-label">
+            Horários livres · toque para agendar
+          </h2>
+          {freeSlots.data.professionals.map((p) => (
+            <div key={p.id} className="staff-free__pro">
+              <span className="t-body-sm staff-free__name">{p.name}</span>
+              {p.times.length ? (
+                <div className="staff-free__times">
+                  {p.times.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      className="lp-slot staff-free__slot"
+                      onClick={() => openNewBooking({ professionalId: p.id, date, time: t })}
+                      aria-label={`Agendar com ${p.name} às ${t}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="t-caption t-muted">Sem horários livres neste dia.</span>
+              )}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {agenda.loading && !agenda.data ? <Loading>Carregando agenda…</Loading> : null}
       {agenda.error && agenda.error.status !== 401 ? <LoadError error={agenda.error} onRetry={agenda.reload} /> : null}
 
@@ -384,6 +448,27 @@ export default function StaffAgendaPage() {
           );
         })}
       </div>
+
+      {newBooking ? (
+        <NewBookingDialog
+          key={newBooking.key}
+          initial={newBooking.initial}
+          onClose={() => setNewBooking(null)}
+          onSessionExpired={sessionExpired}
+          onCreated={(created) => {
+            setNewBooking(null);
+            setToast(
+              `Agendamento de ${created.client.name} marcado: ${formatShortDate(created.date)} às ${created.time}. Código ${created.code}.`,
+            );
+            if (created.date !== date) setDate(created.date);
+            agenda.reload();
+            stripAgenda.reload();
+            tomorrowAgenda.reload();
+            freeSlots.reload();
+          }}
+        />
+      ) : null}
+      <Toast message={toast} onDone={() => setToast('')} />
     </div>
   );
 }

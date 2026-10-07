@@ -5,6 +5,7 @@ import { BookingSummary, Button, Stepper } from '../../components/index.js';
 import { useCustomer } from '../../context/CustomerContext.jsx';
 import { createBooking } from '../../services/api.js';
 import { formatDuration, formatShortDate, phoneDigits } from '../../lib/format.js';
+import { endOf, servicesLines, totalDuration, totalPrice } from '../../lib/bookingServices.js';
 import { hasErrors, validateCustomer } from '../../lib/validation.js';
 import { STEP, STEPS, bookingReducer, canAdvance, initialState } from './bookingReducer.js';
 
@@ -17,7 +18,10 @@ import ConfirmStep from './steps/ConfirmStep.jsx';
 // Na mesma ordem de STEPS (bookingReducer.js).
 const COPY = [
   { title: 'Escolha a profissional', lead: 'Com quem você quer ser atendida? Sem preferência, escolha o primeiro horário livre.' },
-  { title: 'Escolha o serviço', lead: 'Mostramos só os serviços que a profissional escolhida faz.' },
+  {
+    title: 'Escolha os serviços',
+    lead: 'Pode marcar mais de um: fazemos em sequência, um depois do outro, no mesmo atendimento.',
+  },
   { title: 'Escolha seu horário', lead: 'Dias riscados não têm horários livres.' },
   { title: 'Seus dados', lead: 'Usamos seu WhatsApp para confirmar o horário.' },
   { title: 'Confira e confirme', lead: 'Seu horário fica reservado assim que você confirmar.' },
@@ -43,7 +47,8 @@ export default function BookingPage() {
     headingRef.current?.focus();
   }, [state.step]);
 
-  const { step, service, professional, professionals, date, time, slotProfessionalId, customer } = state;
+  const { step, services, professional, professionals, date, time, slotProfessionalId, customer } = state;
+  const total = services.length ? totalPrice(services) : undefined;
 
   // Cliente logada com Google: nome e e-mail já vêm preenchidos (ela pode mudar).
   const { customer: account } = useCustomer();
@@ -63,10 +68,11 @@ export default function BookingPage() {
 
   const summaryItems = [
     { label: 'Profissional', value: attendedBy || '—' },
-    { label: 'Serviço', value: service?.name || '—' },
+    // Vários serviços: um por linha, com o horário de cada um (texto simples: vai junto para a tela de sucesso).
+    { label: services.length > 1 ? 'Serviços' : 'Serviço', value: servicesLines(services, time) || '—' },
     { label: 'Data', value: date ? formatShortDate(date) : '—' },
-    { label: 'Horário', value: time || '—' },
-    { label: 'Duração', value: service ? formatDuration(service.duration) : '—' },
+    { label: 'Horário', value: time ? (services.length > 1 ? `${time} às ${endOf(services, time)}` : time) : '—' },
+    { label: 'Duração', value: services.length ? formatDuration(totalDuration(services)) : '—' },
   ];
 
   const goTo = (target) => dispatch({ type: 'GO_TO', step: target });
@@ -92,7 +98,7 @@ export default function BookingPage() {
     setSubmitError('');
     try {
       const booking = await createBooking({
-        serviceId: service.id,
+        serviceIds: services.map((s) => s.id),
         professionalId: slotProfessionalId,
         date,
         time,
@@ -103,7 +109,7 @@ export default function BookingPage() {
         },
       });
       navigate('/agendamento-confirmado', {
-        state: { booking, items: summaryItems, total: service.price, customerName: customer.name.trim() },
+        state: { booking, items: summaryItems, total, customerName: customer.name.trim() },
       });
     } catch (err) {
       if (err.status === 409) {
@@ -152,14 +158,15 @@ export default function BookingPage() {
           {step === STEP.SERVICE && (
             <ServiceStep
               professionalId={professional.id}
-              selectedId={service?.id}
-              onSelect={(s) => dispatch({ type: 'SELECT_SERVICE', service: s })}
+              selected={services}
+              onToggle={(s) => dispatch({ type: 'TOGGLE_SERVICE', service: s })}
+              onServicesOk={(ok) => dispatch({ type: 'SET_SERVICES_OK', ok })}
             />
           )}
 
           {step === STEP.DATETIME && (
             <DateTimeStep
-              serviceId={service.id}
+              services={services}
               professionalId={professional.id}
               date={date}
               time={time}
@@ -185,7 +192,7 @@ export default function BookingPage() {
               customer={customer}
               error={submitError}
               onEdit={() => goTo(STEP.CUSTOMER)}
-              summary={<BookingSummary items={summaryItems} total={service.price} note={CANCEL_NOTE} />}
+              summary={<BookingSummary items={summaryItems} total={total} note={CANCEL_NOTE} />}
             />
           )}
 
@@ -209,7 +216,7 @@ export default function BookingPage() {
           <aside className="booking__aside">
             <BookingSummary
               items={summaryItems}
-              total={service?.price}
+              total={total}
               note={CANCEL_NOTE}
               action={step === STEP.CONFIRM ? confirmButton : null}
             />

@@ -2,42 +2,19 @@ import { Router } from 'express';
 
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
-import { formatCode, generateCode, normalizeCode } from '../lib/bookingCode.js';
+import { formatCode, normalizeCode } from '../lib/bookingCode.js';
 import { findCustomer } from '../lib/customerAuth.js';
 import { HttpError } from '../lib/errors.js';
 import { rateLimit } from '../lib/rateLimit.js';
 import { dayNumber } from '../lib/time.js';
-import { parseCustomer, parseDate, parseId, parseProfessionalId, parseTime } from '../lib/validate.js';
-import { computeSlots } from '../services/availability.js';
+import { parseCustomer, parseDate, parseProfessionalId, parseServiceIds, parseTime } from '../lib/validate.js';
+import { BOOKING_SERVICES_SQL, bookingServicesView } from '../services/bookingServices.js';
+import { TAKEN, findSlot, insertBooking, upsertClient } from '../services/createBooking.js';
 import { loadSchedule } from '../services/schedule.js';
 
 export const bookingsRouter = Router();
 
-const TAKEN = 'Esse horário acabou de ser reservado. Escolha outro abaixo.';
 const NOT_FOUND = 'Não encontramos agendamento com esse código. Confira as letras e os números.';
-
-const INSERT_BOOKING = `
-  INSERT INTO bookings (code, service_id, professional_id, starts_at, ends_at, status,
-                        customer_name, customer_phone, customer_email, customer_id, price_cents)
-  VALUES ($1, $2, $3,
-          ($4::date + $5::time) AT TIME ZONE $6,
-          ($4::date + $5::time + make_interval(mins => $7::int)) AT TIME ZONE $6,
-          'confirmed', $8, $9, $10, $11, $12)
-  RETURNING id, code, status, professional_id`;
-
-/** Insere com um código novo; se o código sorteado já existir (raríssimo), sorteia outro. */
-async function insertBooking(values) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    try {
-      const { rows } = await query(INSERT_BOOKING, [generateCode(), ...values]);
-      return rows[0];
-    } catch (err) {
-      if (err.code === '23505' && err.constraint === 'bookings_code_key') continue;
-      throw err;
-    }
-  }
-  throw new Error('Não foi possível gerar um código de agendamento único.');
-}
 
 /**
  * Agendamento como a cliente vê: sem telefone, e-mail ou sobrenome (quem tem o código vê a página).
@@ -53,7 +30,8 @@ async function findPublicBooking(code) {
             to_char((b.starts_at - make_interval(hours => $3::int)) AT TIME ZONE $2, 'YYYY-MM-DD"T"HH24:MI') AS cancel_until,
             s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
             (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
-            p.name AS professional_name
+            p.name AS professional_name,
+            ${BOOKING_SERVICES_SQL}
        FROM bookings b
        JOIN services s ON s.id = b.service_id
        JOIN professionals p ON p.id = b.professional_id
@@ -70,7 +48,7 @@ async function findPublicBooking(code) {
     time: b.time,
     isPast: b.is_past,
     customerFirstName: b.customer_name.split(/\s+/)[0],
-    service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
+    ...bookingServicesView(b), // service (resumo) + services (cada parte, com o horário)
     professional: { name: b.professional_name },
     cancellation: {
       allowed: b.can_cancel,
@@ -82,7 +60,8 @@ async function findPublicBooking(code) {
 
 /**
  * POST /bookings
- * { serviceId, professionalId | 'any', date: 'YYYY-MM-DD', time: 'HH:MM', customer: { name, phone, email? } }
+ * { serviceIds: ['manicure', 'pedicure'] (ou serviceId), professionalId | 'any', date: 'YYYY-MM-DD', time: 'HH:MM',
+ *   customer: { name, phone, email? } } — vários serviços são feitos em sequência pela mesma profissional.
  * → 201 { id, code, status, professionalId } · 409 se o horário não está mais livre
  */
 // Contra agendamentos falsos em massa: poucos agendamentos por hora vindos do mesmo endereço.
@@ -94,14 +73,14 @@ const createLimit = rateLimit({
 
 bookingsRouter.post('/', createLimit, async (req, res) => {
   const body = req.body || {};
-  const serviceId = parseId(body.serviceId, 'serviceId', 'o serviço');
+  const serviceIds = parseServiceIds(body);
   const professionalId = parseProfessionalId(body.professionalId);
   const date = parseDate(body.date, 'date');
   const time = parseTime(body.time);
   const customer = parseCustomer(body.customer);
 
   // Confere com a mesma regra que gerou os horários mostrados para a cliente.
-  const { service, pros, nowAbs } = await loadSchedule({ serviceId, professionalId, from: date, to: date });
+  const { service, pros, nowAbs } = await loadSchedule({ serviceIds, professionalId, from: date, to: date });
   if (dayNumber(date) > Math.floor(nowAbs / 1440) + config.bookingMaxDaysAhead) {
     throw new HttpError(400, `Agendamentos podem ser feitos até ${config.bookingMaxDaysAhead} dias à frente.`);
   }
@@ -118,9 +97,7 @@ bookingsRouter.post('/', createLimit, async (req, res) => {
       `Este WhatsApp já tem ${active[0].n} agendamentos marcados. Para marcar mais, fale com o salão.`,
     );
   }
-  const slot = computeSlots({ pros, date, duration: service.duration, step: config.slotStepMin, nowAbs }).find(
-    (s) => s.time === time,
-  );
+  const slot = findSlot({ service, pros, date, time, nowAbs });
   if (!slot) throw new HttpError(400, 'Esse horário não faz parte do expediente. Escolha um dos horários da lista.');
   if (slot.status !== 'available') throw new HttpError(409, TAKEN);
 
@@ -128,10 +105,20 @@ bookingsRouter.post('/', createLimit, async (req, res) => {
   const account = await findCustomer(req);
 
   try {
-    const booking = await insertBooking([
-      service.id, slot.professionalId, date, time, config.timezone, service.duration,
-      customer.name, customer.phone, customer.email, account?.id ?? null, service.priceCents,
-    ]);
+    // Cadastro da cliente pelo WhatsApp (o mesmo que a recepção usa no painel); não duplica.
+    const client = await upsertClient(customer);
+    const booking = await insertBooking({
+      serviceId: service.id,
+      professionalId: slot.professionalId,
+      date,
+      time,
+      duration: service.duration,
+      customer,
+      customerAccountId: account?.id ?? null,
+      priceCents: service.priceCents,
+      items: service.items,
+      clientId: client.id,
+    });
     res.status(201).json({
       id: booking.id,
       code: formatCode(booking.code),

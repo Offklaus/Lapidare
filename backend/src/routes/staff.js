@@ -8,6 +8,8 @@ import { HttpError } from '../lib/errors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import { rateLimit } from '../lib/rateLimit.js';
 import { parseServiceInput, serviceSlug } from '../lib/serviceInput.js';
+import { staffBookingsRouter } from './staffBookings.js';
+import { BOOKING_SERVICES_SQL, bookingServicesView } from '../services/bookingServices.js';
 import {
   SESSION_COOKIE,
   createSession,
@@ -82,10 +84,11 @@ const STAFF_BOOKING_SELECT = `
          to_char(b.confirmation_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS confirmation_sent_at,
          to_char(b.reminder_sent_at AT TIME ZONE $1, 'YYYY-MM-DD"T"HH24:MI') AS reminder_sent_at,
          (b.starts_at AT TIME ZONE $1)::date - (now() AT TIME ZONE $1)::date AS days_until,
-         b.customer_name, b.customer_phone, b.customer_email,
+         b.customer_name, b.customer_phone, b.customer_email, b.origin, b.notes, b.fit_in,
          s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
          (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
-         p.id AS professional_id, p.name AS professional_name
+         p.id AS professional_id, p.name AS professional_name,
+         ${BOOKING_SERVICES_SQL}
     FROM bookings b
     JOIN services s ON s.id = b.service_id
     JOIN professionals p ON p.id = b.professional_id`;
@@ -106,7 +109,10 @@ function toStaffBooking(b) {
     reminderSentAt: b.reminder_sent_at,
     daysUntil: b.days_until, // 0 = hoje, 1 = amanhã (calendário do salão)
     customer: { name: b.customer_name, phone: b.customer_phone, email: b.customer_email },
-    service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
+    origin: b.origin, // 'site' ou o canal anotado pela recepção (whatsapp, instagram, telefone, presencial)
+    notes: b.notes,
+    fitIn: b.fit_in,
+    ...bookingServicesView(b), // service (resumo) + services (cada parte, com o horário)
     professional: { id: b.professional_id, name: b.professional_name },
     actions: {
       cancel: active && !b.started,
@@ -431,3 +437,7 @@ staffRouter.patch('/services/:id', requireAdmin, async (req, res) => {
   const { rows } = await query(`${SERVICE_SELECT} WHERE s.id = $1`, [id]);
   res.json(toStaffService(rows[0]));
 });
+
+/* ---------- Agendamento pela recepção (só admin) — routes/staffBookings.js ---------- */
+
+staffRouter.use(staffBookingsRouter);

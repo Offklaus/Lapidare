@@ -11,6 +11,28 @@ export function parseId(value, field, label) {
   return value.trim();
 }
 
+/** Quantos serviços cabem num mesmo agendamento (feitos em sequência pela mesma profissional). */
+export const MAX_SERVICES = 4;
+
+/**
+ * Serviços do agendamento, na ordem em que serão feitos. Aceita `serviceIds` (lista, ou texto "a,b" na URL)
+ * ou o antigo `serviceId` (um só). → ['manicure', 'pedicure']
+ */
+export function parseServiceIds({ serviceIds, serviceId } = {}) {
+  let list;
+  if (Array.isArray(serviceIds) && serviceIds.length) list = serviceIds;
+  else if (typeof serviceIds === 'string' && serviceIds.trim()) list = serviceIds.split(',');
+  else return [parseId(serviceId, 'serviceId', 'o serviço')];
+
+  const ids = list.map((id) => (typeof id === 'string' ? id.trim() : ''));
+  if (!ids.length || ids.some((id) => !id || id.length > 64)) throw new HttpError(400, 'Informe os serviços (serviceIds).');
+  if (ids.length > MAX_SERVICES) {
+    throw new HttpError(400, `Dá para agendar até ${MAX_SERVICES} serviços de uma vez. Para mais, faça outro agendamento.`);
+  }
+  if (new Set(ids).size !== ids.length) throw new HttpError(400, 'Cada serviço só pode aparecer uma vez no agendamento.');
+  return ids;
+}
+
 /** Ausente ou 'any' → 'any' (primeiro horário livre). */
 export function parseProfessionalId(value) {
   if (value === undefined || value === '' || value === 'any') return 'any';

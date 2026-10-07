@@ -2,13 +2,17 @@ import { useEffect } from 'react';
 
 import { Button, DateStrip, TimeSlotGrid } from '../../../components/index.js';
 import { getAvailability, getSlots } from '../../../services/api.js';
-import { formatShortDate, toISODate } from '../../../lib/format.js';
+import { formatDuration, formatShortDate, toISODate } from '../../../lib/format.js';
+import { totalDuration } from '../../../lib/bookingServices.js';
 import useAsync from '../../../hooks/useAsync.js';
 import { Loading, LoadError } from './StepStatus.jsx';
 
-/** Etapa 3: faixa de dias (14 a partir de hoje) + grade de horários do dia escolhido. */
+/**
+ * Etapa 3: faixa de dias (14 a partir de hoje) + grade de horários do dia escolhido.
+ * Com vários serviços, os horários são de início da sequência inteira (cabe tudo, um depois do outro).
+ */
 export default function DateTimeStep({
-  serviceId,
+  services,
   professionalId,
   date,
   time,
@@ -17,14 +21,16 @@ export default function DateTimeStep({
   onSelectDate,
   onSelectTime,
 }) {
+  const serviceIds = services.map((s) => s.id);
+  const key = serviceIds.join(',');
   const availability = useAsync(
-    () => getAvailability({ serviceId, professionalId, from: toISODate(new Date()), days: 14 }),
-    [serviceId, professionalId, slotsVersion],
+    () => getAvailability({ serviceIds, professionalId, from: toISODate(new Date()), days: 14 }),
+    [key, professionalId, slotsVersion],
   );
 
   const slots = useAsync(
-    () => (date ? getSlots({ serviceId, professionalId, date }) : Promise.resolve([])),
-    [serviceId, professionalId, date, slotsVersion],
+    () => (date ? getSlots({ serviceIds, professionalId, date }) : Promise.resolve([])),
+    [key, professionalId, date, slotsVersion],
   );
 
   const days = availability.data?.days || [];
@@ -67,6 +73,12 @@ export default function DateTimeStep({
 
       <div className="booking__block">
         <h2 className="t-title">{date ? `Horários de ${formatShortDate(date)}` : 'Horários'}</h2>
+        {services.length > 1 ? (
+          <p className="t-body-sm t-muted">
+            Horário de início: os {services.length} serviços são feitos em sequência (
+            {formatDuration(totalDuration(services))} no total).
+          </p>
+        ) : null}
         {slots.loading ? <Loading>Buscando horários…</Loading> : null}
         {slots.error ? <LoadError error={slots.error} onRetry={slots.reload} /> : null}
         {!slots.loading && !slots.error && hasFreeSlot ? (

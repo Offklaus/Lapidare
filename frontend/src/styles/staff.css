@@ -486,3 +486,134 @@
 @media (max-width: 420px) {
   .staff-user__who { display: none; }
 }
+
+/* Agenda: botão "Novo agendamento" e horários livres do dia (admin) */
+.staff-page__head .staff-new-booking { align-self: flex-end; }
+.staff-booking__notes { color: var(--ink); }
+
+.staff-free {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.staff-free__pro {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.staff-free__name { font-weight: 500; color: var(--ink); }
+
+/* Uma linha que rola para o lado: os horários do dia não empurram a agenda para baixo */
+.staff-free__times {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: 2px 2px var(--space-1);
+  scrollbar-width: thin;
+}
+
+.staff-free__slot { flex: none; min-width: 64px; min-height: 40px; padding: 0 var(--space-3); }
+
+/* Novo agendamento (janela) */
+.staff-nb__section { display: flex; flex-direction: column; gap: var(--space-3); }
+.staff-nb__section > h3 { margin: 0; }
+.staff-nb__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.staff-nb__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.staff-nb__search, .staff-nb__quick, .staff-nb__fit { display: flex; flex-direction: column; gap: var(--space-3); }
+.staff-nb__search > .lp-btn { align-self: flex-start; }
+.staff-nb__results { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.staff-nb__result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.staff-nb__result:hover { border-color: var(--ink); }
+.staff-nb__result:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.staff-nb__picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+}
+
+.staff-nb__picked > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.staff-nb__notes { resize: vertical; min-height: 72px; }
+.staff-nb__conflicts { margin: var(--space-2) 0 0; padding-left: var(--space-5); }
+.lp-modal select.lp-field__input { min-height: 44px; }
+
+@media (max-width: 560px) {
+  .staff-page__head .staff-new-booking { width: 100%; order: 3; }
+  .staff-free { padding: var(--space-3); }
+  .staff-free__pro { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .staff-free__slot { min-height: 44px; }
+  .staff-nb__row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Novo agendamento: serviços escolhidos (em sequência), cada um com botão para tirar */
+.staff-nb__services {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.staff-nb__services li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 44px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--surface-raised);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+}
+
+.staff-nb__services-name { font-weight: 500; }
+
+.staff-nb__remove {
+  width: 44px;
+  height: 44px;
+  font: inherit;
+  font-size: 22px;
+  color: var(--ink-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.staff-nb__remove:hover { color: var(--danger); background: var(--surface-sunken); }
+.staff-nb__remove:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.staff-booking__sequence { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .staff-nb__services li { grid-template-columns: minmax(0, 1fr) 44px; }
+  .staff-nb__services li .t-caption { grid-column: 1; grid-row: 2; }
+  .staff-nb__services li .staff-nb__remove { grid-column: 2; grid-row: 1 / span 2; }
+}

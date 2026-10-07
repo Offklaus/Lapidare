@@ -2,6 +2,7 @@
 import { Router } from 'express';
 
 import { config } from '../config.js';
+import { BOOKING_SERVICES_SQL, bookingServicesView } from '../services/bookingServices.js';
 import { query } from '../db/pool.js';
 import { formatCode } from '../lib/bookingCode.js';
 import { customerSessions, publicCustomer, requireCustomer } from '../lib/customerAuth.js';
@@ -68,7 +69,8 @@ customerRouter.get('/bookings', async (req, res) => {
             (b.status IN ('pending', 'confirmed') AND now() <= b.starts_at - make_interval(hours => $4::int)) AS can_cancel,
             s.name AS service_name, b.price_cents, -- preço e duração do momento do agendamento
             (EXTRACT(EPOCH FROM b.ends_at - b.starts_at) / 60)::int AS duration_min,
-            p.name AS professional_name
+            p.name AS professional_name,
+            ${BOOKING_SERVICES_SQL}
        FROM bookings b
        JOIN services s ON s.id = b.service_id
        JOIN professionals p ON p.id = b.professional_id
@@ -85,7 +87,7 @@ customerRouter.get('/bookings', async (req, res) => {
       date: b.date,
       time: b.time,
       isPast: b.is_past,
-      service: { name: b.service_name, duration: b.duration_min, price: b.price_cents / 100 },
+      ...bookingServicesView(b), // service (resumo) + services (cada parte, com o horário)
       professional: { name: b.professional_name },
       cancellation: { allowed: b.can_cancel },
     })),

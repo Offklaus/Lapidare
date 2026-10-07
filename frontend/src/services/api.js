@@ -51,25 +51,37 @@ export function getServices(professionalId) {
   return request('/services', { params: { professionalId } });
 }
 
-/** GET /professionals?serviceId= → [{ id, name, role, specialties, photo }] */
-export function getProfessionals(serviceId) {
-  if (USE_MOCK) return mock.getProfessionals(serviceId);
-  return request('/professionals', { params: { serviceId } });
+/** Serviços escolhidos, na ordem em que serão feitos. Aceita a lista (serviceIds) ou um só (serviceId). */
+const idsOf = (serviceIds, serviceId) => (serviceIds?.length ? serviceIds : serviceId ? [serviceId] : []);
+
+/**
+ * GET /professionals?serviceIds=a,b → [{ id, name, role, specialties, photo }]
+ * Com serviços, só quem faz todos eles; sem, todas.
+ */
+export function getProfessionals(serviceIds) {
+  const ids = Array.isArray(serviceIds) ? serviceIds : idsOf(null, serviceIds);
+  if (USE_MOCK) return mock.getProfessionals(ids);
+  return request('/professionals', { params: { serviceIds: ids.join(',') } });
 }
 
-/** GET /availability → { days: [{ date, available }] } */
-export function getAvailability({ serviceId, professionalId = 'any', from, days = 14 }) {
-  if (USE_MOCK) return mock.getAvailability({ serviceId, professionalId, from, days });
-  return request('/availability', { params: { serviceId, professionalId, from, days } });
+/** GET /availability → { days: [{ date, available }] } — com vários serviços, dias em que cabe a sequência inteira */
+export function getAvailability({ serviceIds, serviceId, professionalId = 'any', from, days = 14 }) {
+  const ids = idsOf(serviceIds, serviceId);
+  if (USE_MOCK) return mock.getAvailability({ serviceIds: ids, professionalId, from, days });
+  return request('/availability', { params: { serviceIds: ids.join(','), professionalId, from, days } });
 }
 
-/** GET /availability/slots → [{ time, status, professionalId }] */
-export function getSlots({ serviceId, professionalId = 'any', date }) {
-  if (USE_MOCK) return mock.getSlots({ serviceId, professionalId, date });
-  return request('/availability/slots', { params: { serviceId, professionalId, date } });
+/** GET /availability/slots → [{ time, status, professionalId }] — horário de início da sequência */
+export function getSlots({ serviceIds, serviceId, professionalId = 'any', date }) {
+  const ids = idsOf(serviceIds, serviceId);
+  if (USE_MOCK) return mock.getSlots({ serviceIds: ids, professionalId, date });
+  return request('/availability/slots', { params: { serviceIds: ids.join(','), professionalId, date } });
 }
 
-/** POST /bookings → 201 { id, code, status } · 409 se o horário foi reservado nesse meio-tempo */
+/**
+ * POST /bookings { serviceIds, professionalId, date, time, customer } → 201 { id, code, status }
+ * · 409 se o horário foi reservado nesse meio-tempo. Vários serviços = um agendamento, em sequência.
+ */
 export function createBooking(payload) {
   if (USE_MOCK) return mock.createBooking(payload);
   // credentials: se a cliente estiver logada, a reserva fica ligada à conta dela.

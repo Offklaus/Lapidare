@@ -2,6 +2,15 @@
    com o texto pronto, e a pessoa só aperta enviar. Tom da marca: caloroso, direto, sem emoji. */
 import { formatLongDate } from './format.js';
 
+/** O que vai ser feito: um serviço numa linha; vários, um por linha com o horário de cada um. */
+function whatLines(booking) {
+  const list = booking.services || [];
+  if (list.length > 1) {
+    return [...list.map((s) => `${s.time} · ${s.name}`), `com ${booking.professional.name}`];
+  }
+  return [`${booking.service.name} com ${booking.professional.name}`];
+}
+
 /** Telefone salvo só com dígitos (DDD + número) → link wa.me com o texto já preenchido. */
 export function whatsappLink(phoneDigits, text) {
   const base = `https://wa.me/55${phoneDigits}`;
@@ -18,7 +27,7 @@ export function confirmationMessage(booking, { siteUrl, cancelMinHours }) {
     `Olá, ${firstName}! Aqui é da Lapidare Beauty.`,
     '',
     'Seu horário está confirmado:',
-    `${booking.service.name} com ${booking.professional.name}`,
+    ...whatLines(booking),
     `${formatLongDate(booking.date)}, às ${booking.time}`,
     '',
     `Código do agendamento: ${booking.code}`,
@@ -40,7 +49,7 @@ export function reminderMessage(booking, { siteUrl }) {
   return [
     `Olá, ${firstName}! Passando para lembrar do seu horário ${today ? 'hoje' : 'amanhã'} na Lapidare Beauty:`,
     '',
-    `${booking.service.name} com ${booking.professional.name}`,
+    ...whatLines(booking),
     `${formatLongDate(booking.date)}, às ${booking.time}`,
     '',
     'Se não puder vir, é só responder esta mensagem.',

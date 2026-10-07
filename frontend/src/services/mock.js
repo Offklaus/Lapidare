@@ -48,11 +48,23 @@ function seeded(str) {
 
 const toTime = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-function prosFor(serviceId) {
-  const service = SERVICES.find((s) => s.id === serviceId);
-  if (!service) return [];
-  return PROFESSIONALS.filter((p) => p.specialties.includes(service.category));
+/** Serviços escolhidos (na ordem); [] se algum não existe. */
+function servicesFor(serviceIds = []) {
+  const list = serviceIds.map((id) => SERVICES.find((s) => s.id === id));
+  return list.length && list.every(Boolean) ? list : [];
 }
+
+/** Quem faz TODOS os serviços (vários serviços = em sequência, com a mesma profissional). */
+function prosFor(serviceIds) {
+  const services = servicesFor(serviceIds);
+  if (!services.length) return [];
+  return PROFESSIONALS.filter((p) => services.every((s) => p.specialties.includes(s.category)));
+}
+
+const totalOf = (services) => ({
+  duration: services.reduce((sum, s) => sum + s.duration, 0),
+  price: services.reduce((sum, s) => sum + s.price, 0),
+});
 
 function slotsForPro(service, proId, date) {
   const dt = parseISODate(date);
@@ -73,10 +85,11 @@ function slotsForPro(service, proId, date) {
   return list;
 }
 
-function slotsFor({ serviceId, professionalId = 'any', date }) {
-  const service = SERVICES.find((s) => s.id === serviceId);
-  if (!service) return [];
-  const pros = prosFor(serviceId).filter((p) => professionalId === 'any' || p.id === professionalId);
+function slotsFor({ serviceIds, professionalId = 'any', date }) {
+  const services = servicesFor(serviceIds);
+  if (!services.length) return [];
+  const service = totalOf(services); // a sequência inteira precisa caber
+  const pros = prosFor(serviceIds).filter((p) => professionalId === 'any' || p.id === professionalId);
 
   // "Primeiro horário livre": junta as agendas e fica com a primeira profissional livre em cada horário.
   const byTime = new Map();
@@ -96,10 +109,10 @@ export async function getServices(professionalId) {
   return list.map((s) => ({ ...s }));
 }
 
-export async function getProfessionals(serviceId) {
+export async function getProfessionals(serviceIds = []) {
   await delay();
-  // Sem serviço (1ª etapa do agendamento: profissional primeiro), todas; com serviço, só quem o faz.
-  const list = serviceId ? prosFor(serviceId) : PROFESSIONALS;
+  // Sem serviço (1ª etapa do agendamento: profissional primeiro), todas; com serviços, só quem faz todos.
+  const list = serviceIds.length ? prosFor(serviceIds) : PROFESSIONALS;
   return list.map((p) => ({ ...p }));
 }
 
@@ -108,7 +121,7 @@ export async function getSlots(params) {
   return slotsFor(params);
 }
 
-export async function getAvailability({ serviceId, professionalId = 'any', from, days = 14 }) {
+export async function getAvailability({ serviceIds, professionalId = 'any', from, days = 14 }) {
   await delay();
   const start = from ? parseISODate(from) : new Date();
   const result = [];
@@ -116,13 +129,13 @@ export async function getAvailability({ serviceId, professionalId = 'any', from,
     const dt = new Date(start);
     dt.setDate(start.getDate() + i);
     const date = toISODate(dt);
-    const slots = slotsFor({ serviceId, professionalId, date });
+    const slots = slotsFor({ serviceIds, professionalId, date });
     result.push({ date, available: slots.some((s) => s.status === 'available') });
   }
   return { days: result };
 }
 
-export async function createBooking({ serviceId, professionalId, date, time, customer }) {
+export async function createBooking({ serviceIds, serviceId, professionalId, date, time, customer }) {
   await delay(600);
   const taken = bookings.some((b) => b.professionalId === professionalId && b.date === date && b.time === time);
   if (taken) {
@@ -133,7 +146,7 @@ export async function createBooking({ serviceId, professionalId, date, time, cus
   const booking = {
     id: `bk_${Date.now().toString(36)}`,
     code: randomCode(),
-    serviceId,
+    serviceIds: serviceIds?.length ? serviceIds : [serviceId],
     professionalId,
     date,
     time,
@@ -165,7 +178,8 @@ export async function getBooking(code) {
 const CANCEL_MIN_HOURS = 24;
 
 function publicBooking(booking) {
-  const service = SERVICES.find((s) => s.id === booking.serviceId);
+  const list = servicesFor(booking.serviceIds);
+  const service = totalOf(list);
   const pro = PROFESSIONALS.find((p) => p.id === booking.professionalId);
   const [h, m] = booking.time.split(':').map(Number);
   const start = parseISODate(booking.date);
@@ -180,7 +194,11 @@ function publicBooking(booking) {
     time: booking.time,
     isPast: end < new Date(),
     customerFirstName: booking.customer.name.split(' ')[0],
-    service: { name: service.name, duration: service.duration, price: service.price },
+    service: { name: list.map((s) => s.name).join(' + '), duration: service.duration, price: service.price },
+    services: list.reduce((acc, s) => {
+      const at = acc.length ? acc[acc.length - 1].end : h * 60 + m;
+      return [...acc, { name: s.name, duration: s.duration, price: s.price, time: toTime(at), end: at + s.duration }];
+    }, []).map(({ end, ...s }) => s),
     professional: { name: pro.name },
     cancellation: {
       allowed: active && new Date() <= deadline,

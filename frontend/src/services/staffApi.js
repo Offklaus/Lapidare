@@ -49,3 +49,23 @@ export const createService = (service) => request('/staff/services', { method: '
 /** PATCH /staff/services/:id { name, category, description, duration, price, active } → serviço atualizado (só admin) */
 export const updateService = (id, service) =>
   request(`/staff/services/${encodeURIComponent(id)}`, { method: 'PATCH', body: service, ...withSession });
+
+/* ---------- Agendamento pela recepção (só admin) ---------- */
+
+/** GET /staff/clients?q= → [{ id, name, phone, bookings, lastBookingDate }] — por nome ou WhatsApp */
+export const searchClients = (q) => request('/staff/clients', { params: { q }, ...withSession });
+
+/** POST /staff/clients { name, phone } → { id, name, phone, existing? } (não duplica o mesmo WhatsApp) */
+export const createClient = ({ name, phone }) =>
+  request('/staff/clients', { method: 'POST', body: { name, phone }, ...withSession });
+
+/** GET /staff/free-slots?date=&professionalId= → { date, step, professionals: [{ id, name, times }] } */
+export const getFreeSlots = ({ date, professionalId }) =>
+  request('/staff/free-slots', { params: { date, professionalId }, ...withSession });
+
+/**
+ * POST /staff/bookings { clientId | client, serviceId, professionalId, start: 'YYYY-MM-DDTHH:MM', origin, notes,
+ * fitIn, confirmFitIn } → 201 { id, code, date, time, endTime, client } · 409 { message, conflicts }
+ */
+export const createStaffBooking = (booking) =>
+  request('/staff/bookings', { method: 'POST', body: booking, ...withSession });

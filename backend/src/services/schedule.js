@@ -12,37 +12,84 @@ export async function salonNow() {
   return { today: rows[0].now.slice(0, 10), nowAbs: stampToAbs(rows[0].now) };
 }
 
-/**
- * Serviço + profissionais que o fazem (todas ou uma) + expediente, agendamentos e folgas entre `from` e `to`.
- * Retorna { service: { id, duration, priceCents }, pros: [...], nowAbs } no formato de services/availability.js.
- */
-export async function loadSchedule({ serviceId, professionalId, from, to }) {
-  const { rows: services } = await query(
-    'SELECT id, duration_min, price_cents FROM services WHERE id = $1 AND active',
-    [serviceId],
-  );
-  if (!services.length) throw new HttpError(404, 'Não encontramos esse serviço. Volte e escolha outro.');
-  const service = { id: services[0].id, duration: services[0].duration_min, priceCents: services[0].price_cents };
+/** Maior bloco que um agendamento pode ocupar (todos os serviços somados), em minutos. */
+export const MAX_BOOKING_MINUTES = 600;
 
-  const params = [serviceId];
+/**
+ * Serviço(s) + profissionais que fazem todos eles (todas ou uma) + expediente, agendamentos e folgas entre
+ * `from` e `to`. Vários serviços são feitos em sequência pela mesma profissional: o horário precisa caber a
+ * soma das durações.
+ * Retorna { service: { id, ids, items: [{ id, name, duration, priceCents }], duration, priceCents }, pros, nowAbs }
+ * (duration e priceCents somados; id = o primeiro serviço) no formato de services/availability.js.
+ */
+export async function loadSchedule({ serviceId, serviceIds, professionalId, from, to }) {
+  const ids = serviceIds?.length ? serviceIds : [serviceId];
+  const { rows } = await query(
+    'SELECT id, name, duration_min, price_cents FROM services WHERE id = ANY($1::text[]) AND active',
+    [ids],
+  );
+  const byId = new Map(rows.map((s) => [s.id, s]));
+  if (ids.some((id) => !byId.has(id))) {
+    throw new HttpError(
+      404,
+      ids.length > 1
+        ? 'Um dos serviços escolhidos não está disponível. Volte e escolha de novo.'
+        : 'Não encontramos esse serviço. Volte e escolha outro.',
+    );
+  }
+  const items = ids.map((id) => {
+    const s = byId.get(id);
+    return { id: s.id, name: s.name, duration: s.duration_min, priceCents: s.price_cents };
+  });
+  const service = {
+    id: ids[0],
+    ids,
+    items,
+    duration: items.reduce((sum, s) => sum + s.duration, 0),
+    priceCents: items.reduce((sum, s) => sum + s.priceCents, 0),
+  };
+  if (service.duration > MAX_BOOKING_MINUTES) {
+    throw new HttpError(400, 'Os serviços somados passam de 10 horas. Escolha menos serviços ou faça outro agendamento.');
+  }
+
+  // Só quem faz TODOS os serviços escolhidos.
+  const params = [ids, ids.length];
   let onlyOne = '';
   if (professionalId !== 'any') {
     params.push(professionalId);
-    onlyOne = 'AND p.id = $2';
+    onlyOne = 'AND p.id = $3';
   }
   const { rows: proRows } = await query(
     `SELECT p.id
        FROM professionals p
        JOIN professional_services ps ON ps.professional_id = p.id
-      WHERE ps.service_id = $1 AND p.active ${onlyOne}
+      WHERE ps.service_id = ANY($1::text[]) AND p.active ${onlyOne}
+      GROUP BY p.id, p.sort, p.name
+     HAVING count(DISTINCT ps.service_id) = $2
       ORDER BY p.sort, p.name`,
     params,
   );
   if (professionalId !== 'any' && !proRows.length) {
-    throw new HttpError(404, 'Essa profissional não faz o serviço escolhido.');
+    throw new HttpError(
+      404,
+      ids.length > 1 ? 'Essa profissional não faz todos os serviços escolhidos.' : 'Essa profissional não faz o serviço escolhido.',
+    );
   }
 
-  const ids = proRows.map((p) => p.id);
+  const { pros, nowAbs } = await loadProfessionalsSchedule(
+    proRows.map((p) => p.id),
+    from,
+    to,
+  );
+  return { service, pros, nowAbs };
+}
+
+/**
+ * Expediente, agendamentos ativos e folgas das profissionais `ids` entre `from` e `to` (no fuso do salão).
+ * Retorna { pros, nowAbs } no formato de services/availability.js. Usada pelo agendamento das clientes
+ * (via loadSchedule) e pelos horários livres do painel.
+ */
+export async function loadProfessionalsSchedule(ids, from, to) {
   const tz = config.timezone;
   // Intervalo [início de `from`, início do dia seguinte a `to`) no fuso do salão.
   const range = [ids, tz, from, to];
@@ -92,5 +139,5 @@ export async function loadSchedule({ serviceId, professionalId, from, to }) {
     byId.get(t.professional_id).blocked.push({ start: stampToAbs(t.start), end: stampToAbs(t.end) });
   }
 
-  return { service, pros, nowAbs: now.nowAbs };
+  return { pros, nowAbs: now.nowAbs };
 }

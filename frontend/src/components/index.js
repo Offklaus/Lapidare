@@ -10,3 +10,5 @@ export { default as DateStrip } from './DateStrip.jsx';
 export { default as TimeSlotGrid } from './TimeSlotGrid.jsx';
 export { default as Stepper } from './Stepper.jsx';
 export { default as BookingSummary } from './BookingSummary.jsx';
+export { default as Modal } from './Modal.jsx';
+export { default as Toast } from './Toast.jsx';

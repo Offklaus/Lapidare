@@ -1,6 +1,7 @@
 /* Estado do fluxo de agendamento. */
+import { MAX_SERVICES } from '../../lib/bookingServices.js';
 
-/* A cliente escolhe a profissional primeiro e depois um dos serviços que ela faz. */
+/* A cliente escolhe a profissional primeiro e depois um ou mais serviços que ela faz (feitos em sequência). */
 export const STEPS = ['Profissional', 'Serviço', 'Data e horário', 'Seus dados', 'Confirmação'];
 
 export const STEP = { PROFESSIONAL: 0, SERVICE: 1, DATETIME: 2, CUSTOMER: 3, CONFIRM: 4 };
@@ -13,7 +14,8 @@ export const ANY_PROFESSIONAL = {
 
 export const initialState = {
   step: STEP.PROFESSIONAL,
-  service: null,
+  services: [], // na ordem em que serão feitos
+  servicesOk: true, // "Primeiro horário livre": alguma profissional faz todos os serviços escolhidos?
   professional: null,
   professionals: [],
   date: null,
@@ -25,19 +27,30 @@ export const initialState = {
   conflict: '', // mensagem do 409
 };
 
+const clearTime = { date: null, time: null, slotProfessionalId: null };
+
 export function bookingReducer(state, action) {
   switch (action.type) {
     case 'SET_PROFESSIONALS':
       return { ...state, professionals: action.professionals };
 
-    // Outra profissional pode não fazer o serviço já escolhido: começa de novo a partir do serviço.
+    // Outra profissional pode não fazer os serviços já escolhidos: começa de novo a partir do serviço.
     case 'SELECT_PROFESSIONAL':
       if (state.professional?.id === action.professional.id) return state;
-      return { ...state, professional: action.professional, service: null, date: null, time: null, slotProfessionalId: null };
+      return { ...state, professional: action.professional, services: [], servicesOk: true, ...clearTime };
 
-    case 'SELECT_SERVICE':
-      if (state.service?.id === action.service.id) return state;
-      return { ...state, service: action.service, date: null, time: null, slotProfessionalId: null };
+    // Marca/desmarca um serviço. A ordem de escolha é a ordem em que serão feitos.
+    case 'TOGGLE_SERVICE': {
+      const chosen = state.services.some((s) => s.id === action.service.id);
+      if (!chosen && state.services.length >= MAX_SERVICES) return state;
+      const services = chosen
+        ? state.services.filter((s) => s.id !== action.service.id)
+        : [...state.services, action.service];
+      return { ...state, services, ...clearTime };
+    }
+
+    case 'SET_SERVICES_OK':
+      return state.servicesOk === action.ok ? state : { ...state, servicesOk: action.ok };
 
     case 'SELECT_DATE':
       if (state.date === action.date) return state;
@@ -80,7 +93,7 @@ export function canAdvance(state) {
     case STEP.PROFESSIONAL:
       return !!state.professional;
     case STEP.SERVICE:
-      return !!state.service;
+      return state.services.length > 0 && state.servicesOk;
     case STEP.DATETIME:
       return !!(state.date && state.time);
     case STEP.CUSTOMER:

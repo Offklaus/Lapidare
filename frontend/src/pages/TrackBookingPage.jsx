@@ -133,7 +133,14 @@ function BookingResult({ lookup, onCancelled }) {
       <BookingSummary
         title={`Agendamento ${booking.code}`}
         items={[
-          { label: 'Serviço', value: booking.service.name },
+          // Vários serviços: um por linha, com o horário de cada um.
+          {
+            label: booking.services?.length > 1 ? 'Serviços' : 'Serviço',
+            value:
+              booking.services?.length > 1
+                ? booking.services.map((s) => `${s.time} · ${s.name}`).join('\n')
+                : booking.service.name,
+          },
           { label: 'Profissional', value: booking.professional.name },
           { label: 'Data', value: formatShortDate(booking.date) },
           { label: 'Horário', value: booking.time },

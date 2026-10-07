@@ -176,6 +176,18 @@ em produção a própria API entrega o front compilado (`frontend/dist`).
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.
 
+**Vários serviços no mesmo agendamento** (ex.: manicure + pedicure com a Nicole):
+
+- `/professionals`, `/availability`, `/availability/slots`, `POST /bookings` e `POST /staff/bookings` aceitam
+  `serviceIds` (lista no corpo, ou `serviceIds=manicure,pedicure` na URL) — até 4 serviços. `serviceId` (um só)
+  continua funcionando.
+- Os serviços são feitos **em sequência, na ordem enviada, pela mesma profissional**. Horários livres = onde cabe a
+  soma das durações; profissionais = só quem faz **todos** (`/professionals?serviceIds=` serve para conferir).
+- Continua sendo **um agendamento**: um código, um bloco de horário (`starts_at` → `ends_at`), um preço total, uma
+  confirmação e um cancelamento. Cada parte fica em `booking_services` (ordem, serviço, duração e preço do momento).
+- Respostas de agendamento trazem `service: { name: 'Manicure tradicional + Pedicure', duration, price }` (totais) e
+  `services: [{ id, name, duration, price, time }]` com o horário de início de cada parte.
+
 ### Conta da cliente (login com Google)
 
 As clientes entram em `/entrar` com a conta Google e veem as próprias reservas em `/minhas-reservas`.
@@ -217,6 +229,25 @@ Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include
 | GET | `/staff/services` | só admin → `[{ id, category, name, description, duration, price, active, professionalCount }]` (inclui os fora do agendamento; `professionalCount: 0` = nenhuma profissional faz, a cliente não vê) |
 | POST | `/staff/services` | só admin · corpo `{ name, category, description?, duration, price, professionalIds? }` (preço em reais, duração 5–600 min) → `201` com o serviço; o `id` vem do nome (`esmaltacao-em-gel`) |
 | PATCH | `/staff/services/:id` | só admin · corpo `{ name, category, description, duration, price, active }` → serviço atualizado · `active: false` tira do agendamento sem apagar o histórico |
+
+**Agendamento pela recepção** (só admin; cliente que marcou por WhatsApp, Direct, telefone ou pessoalmente):
+
+| Método | Rota | Resposta |
+| --- | --- | --- |
+| GET | `/staff/clients?q=` | busca por nome ou WhatsApp → `[{ id, name, phone, bookings, lastBookingDate }]` (até 10) |
+| POST | `/staff/clients` | cadastro rápido `{ name, phone }` → `201` nova · `200 { …, existing: true }` se o WhatsApp já existe (não duplica) |
+| GET | `/staff/free-slots?date=&professionalId=` | inícios livres de cada profissional no dia (mesmo cálculo do site) |
+| POST | `/staff/bookings` | `{ clientId \| client: { name, phone }, serviceId, professionalId, start: 'YYYY-MM-DDTHH:MM', origin: 'whatsapp'\|'instagram'\|'telefone'\|'presencial', notes?, fitIn?, confirmFitIn? }` → `201 { id, code, date, time, endTime, client }` · `400` dados inválidos, profissional que não faz o serviço, horário fora da lista sem encaixe ou encaixe sem confirmação · `403` não admin · `409 { message, conflicts: [{ code, customerName, service, time, endTime }] }` |
+
+- `start` é no fuso do salão; o fim é calculado pela duração do serviço (o front não manda fim). No banco tudo fica em UTC.
+- Sem encaixe vale a mesma regra de horários do site. **Encaixe** (`fitIn` + `confirmFitIn`) pode ficar fora do
+  expediente ou de uma folga, mas **nunca** em cima de outro atendimento: a trava `bookings_no_overlap` do banco
+  continua valendo, inclusive com pedidos simultâneos.
+- O agendamento grava `origin`, `notes`, `fit_in` e `created_by_staff_id`, e aparece na agenda com os mesmos botões
+  de confirmação e lembrete pelo WhatsApp.
+- Clientes ficam na tabela `clients` (um cadastro por WhatsApp); agendamentos do site também entram nela.
+- Testes de integração (`backend/test/manualBooking.test.js`) criam e apagam o banco `lapidare_test` no Postgres
+  local; com banco que não seja local, só rodam com `TEST_DATABASE_URL` definido.
 
 Agendamentos guardam o **preço** do momento em que foram feitos (`bookings.price_cents`) e a duração vem do
 horário reservado: mudar preço ou duração na aba **Serviços** vale só para os próximos agendamentos.

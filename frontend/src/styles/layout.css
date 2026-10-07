@@ -686,3 +686,24 @@
   .track__form { flex-direction: column; align-items: stretch; }
   .track__form > .lp-btn { margin-top: 0; }
 }
+
+/* Agendamento: vários serviços escolhidos, na ordem em que serão feitos */
+.booking__sequence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.booking__sequence ol {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 15px;
+  line-height: 22px;
+}
