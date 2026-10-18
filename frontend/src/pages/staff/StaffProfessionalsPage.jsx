@@ -17,12 +17,13 @@ function ProfessionalForm({ professional, services, onSessionExpired }) {
   const [saved, setSaved] = useState(professional);
   const [name, setName] = useState(professional.name);
   const [role, setRole] = useState(professional.role || '');
+  const [active, setActive] = useState(professional.active);
   const [selected, setSelected] = useState(professional.serviceIds || []);
   const [error, setError] = useState('');
   const [justSaved, setJustSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const infoChanged = name.trim() !== saved.name || role.trim() !== (saved.role || '');
+  const infoChanged = name.trim() !== saved.name || role.trim() !== (saved.role || '') || active !== saved.active;
   const servicesChanged = !sameIds(selected, saved.serviceIds || []);
   const changed = infoChanged || servicesChanged;
 
@@ -44,11 +45,12 @@ function ProfessionalForm({ professional, services, onSessionExpired }) {
     setError('');
     try {
       let next = { ...saved };
-      if (infoChanged) next = { ...next, ...(await updateProfessional(professional.id, { name, role })) };
+      if (infoChanged) next = { ...next, ...(await updateProfessional(professional.id, { name, role, active })) };
       if (servicesChanged) next.serviceIds = (await updateProfessionalServices(professional.id, selected)).serviceIds;
       setSaved(next);
       setName(next.name);
       setRole(next.role || '');
+      setActive(next.active);
       setSelected(next.serviceIds || []);
       setJustSaved(true);
     } catch (err) {
@@ -134,7 +136,18 @@ function ProfessionalForm({ professional, services, onSessionExpired }) {
             Salvo
           </span>
         ) : null}
-        {!saved.active ? <span className="t-caption t-muted">Inativa</span> : null}
+        <label className="staff-check">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => {
+              setActive(e.target.checked);
+              setJustSaved(false);
+            }}
+          />
+          <span>Aparece no agendamento</span>
+        </label>
+        {!active ? <span className="t-caption t-muted">Fora do agendamento (saiu do salão ou de férias)</span> : null}
       </div>
     </form>
   );

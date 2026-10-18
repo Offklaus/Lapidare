@@ -18,3 +18,6 @@ export const getCustomerMe = () => request('/customer/me', withSession);
 
 /** GET /customer/bookings → reservas da cliente, mais recentes primeiro */
 export const getMyBookings = () => request('/customer/bookings', withSession);
+
+/** DELETE /customer/me → 204 — apaga a conta da cliente (LGPD); os agendamentos ficam com o salão */
+export const deleteMyAccount = () => request('/customer/me', { method: 'DELETE', ...withSession });

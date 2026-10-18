@@ -213,6 +213,45 @@ Reserva criada com a cliente logada (`POST /bookings` com o cookie) fica ligada 
 
 ### Painel da equipe (`/equipe` no site)
 
+A área da equipe não tem link no site público: a equipe entra pelo endereço `/equipe`.
+
+**Perfis**
+
+| Perfil | Acesso |
+| --- | --- |
+| Cliente | Login com Google: agenda e consulta as próprias reservas; pode excluir a conta (`DELETE /customer/me`) |
+| Profissional | Só a própria agenda: vê, marca concluído/falta/cancela, envia WhatsApp e agenda clientes para si. Na busca de clientes vê só quem já atendeu (ou o WhatsApp completo digitado) |
+| Admin (até `MAX_ADMINS`, padrão 4) | Área da equipe inteira + **Usuários**. Login com senha **e** app autenticador (2FA) |
+
+**Acesso e segurança**
+
+- A admin convida em *Usuários* (nome, e-mail, perfil e, para profissional, de quem é a agenda — dá para cadastrar
+  uma profissional nova ali). O sistema gera um **link de uso único que vale 48 h**; a pessoa cria a própria senha.
+  No banco fica só o hash do link.
+- 2FA da admin: TOTP (RFC 6238), cadastrado no primeiro login pelo QR code; código não pode ser reusado; segredo
+  cifrado com AES-256-GCM (`APP_SECRET`). Perdeu o celular: outra admin reinicia em *Usuários*, ou
+  `npm run staff:reset-2fa -- --email x` (`staff:reset-2fa:prod` em produção).
+- Desativar, mudar perfil, gerar link de nova senha ou reiniciar 2FA derruba as sessões da pessoa na hora.
+  Ninguém muda o próprio perfil nem se desativa; sempre sobra uma admin ativa.
+- Registro de ações (`staff_audit_log`, *Usuários → Registro de ações*): quem convidou, mudou ou tirou acesso, sem
+  senhas, links, segredos ou dados de clientes.
+- Cookie da equipe `httpOnly` + `SameSite=Strict`; sessão de admin 12 h (`STAFF_ADMIN_SESSION_HOURS`).
+  Pedidos que mudam dados só valem vindos do próprio site (cabeçalho `Origin`); respostas da API com
+  `Cache-Control: no-store`.
+- `APP_SECRET` é obrigatório em produção (sem ele o login de admin fica bloqueado) e **não deve ser trocado**
+  depois: os apps autenticadores já cadastrados param de funcionar.
+
+| Método | Rota | Resposta |
+| --- | --- | --- |
+| POST | `/staff/login/2fa` | `{ challenge, code }` → `{ user }` + cookie (admin) · 5 códigos errados = volta para a senha |
+| GET / POST | `/staff/invites/:token` | dados do convite / `{ password }` cria a senha (link de uso único) |
+| GET / POST | `/staff/users` | só admin: lista / convida `{ name, email, role, professionalId \| newProfessional }` → `{ user, link }` |
+| PATCH | `/staff/users/:id` | só admin: `{ name?, role?, professionalId?, active? }` |
+| POST | `/staff/users/:id/link` · `/staff/users/:id/reset-2fa` | só admin: novo link de senha (a atual deixa de valer) · reinicia o 2FA |
+| DELETE | `/staff/users/:id` | só admin: exclui convite nunca usado |
+| GET | `/staff/audit` | só admin: últimas 100 ações sobre contas |
+| PUT | `/staff/account/password` | qualquer pessoa da equipe: `{ currentPassword, newPassword }` (as outras sessões caem) |
+
 Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include'`):
 
 | Método | Rota | Resposta |

@@ -57,6 +57,17 @@ customerRouter.get('/me', (req, res) => {
 });
 
 /**
+ * DELETE /customer/me → 204 — LGPD: a cliente apaga a própria conta (nome, e-mail e foto do Google) e todas
+ * as sessões. Os agendamentos continuam com o salão (são o registro do atendimento combinado), só deixam de
+ * ficar ligados à conta.
+ */
+customerRouter.delete('/me', async (req, res) => {
+  await query('DELETE FROM customers WHERE id = $1', [req.customer.id]); // sessões caem junto (ON DELETE CASCADE)
+  res.clearCookie(customerSessions.cookieName, customerSessions.cookieOptions({ withMaxAge: false }));
+  res.status(204).end();
+});
+
+/**
  * GET /customer/bookings → [{ code, status, date, time, isPast, service, professional, cancellation }]
  * Reservas feitas logada + reservas antigas com o mesmo e-mail (confirmado pelo Google). Mais recentes primeiro.
  */

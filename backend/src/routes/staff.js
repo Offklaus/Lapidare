@@ -1,25 +1,15 @@
-import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 
 import { config } from '../config.js';
 import { pool, query } from '../db/pool.js';
 import { formatCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
-import { hashPassword, verifyPassword } from '../lib/password.js';
-import { rateLimit } from '../lib/rateLimit.js';
 import { parseServiceInput, serviceSlug } from '../lib/serviceInput.js';
 import { staffBookingsRouter } from './staffBookings.js';
+import { staffLoginRouter } from './staffLogin.js';
+import { staffUsersRouter } from './staffUsers.js';
 import { BOOKING_SERVICES_SQL, bookingServicesView } from '../services/bookingServices.js';
-import {
-  SESSION_COOKIE,
-  createSession,
-  destroySession,
-  publicStaff,
-  readSessionToken,
-  requireAdmin,
-  requireStaff,
-  sessionCookieOptions,
-} from '../lib/staffAuth.js';
+import { publicStaff, requireAdmin, requireStaff } from '../lib/staffAuth.js';
 import { dayNumber } from '../lib/time.js';
 import { parseDate, parseId } from '../lib/validate.js';
 
@@ -28,44 +18,9 @@ export const staffRouter = Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACTIVE = ['pending', 'confirmed'];
 
-// Com e-mail inexistente ainda roda o scrypt (contra este hash), para a resposta levar o mesmo tempo.
-const DUMMY_HASH = await hashPassword(randomBytes(16).toString('hex'));
+/* ---------- Sem sessão: login (senha + 2FA da admin), saída e link de convite — routes/staffLogin.js ---------- */
 
-/* ---------- Login / logout ---------- */
-
-staffRouter.post(
-  '/login',
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Muitas tentativas de login. Espere alguns minutos.' }),
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    key: (req) => `login:${String(req.body?.email || '').trim().toLowerCase()}`,
-    message: 'Muitas tentativas para este e-mail. Espere 15 minutos e tente de novo.',
-  }),
-  async (req, res) => {
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!email || !password) throw new HttpError(400, 'Informe e-mail e senha.');
-
-    const { rows } = await query(
-      'SELECT id, name, email, role, professional_id, password_hash FROM staff_users WHERE email = $1 AND active',
-      [email],
-    );
-    const user = rows[0];
-    const ok = await verifyPassword(password, user ? user.password_hash : DUMMY_HASH);
-    if (!user || !ok) throw new HttpError(401, 'E-mail ou senha incorretos.');
-
-    const token = await createSession(user.id);
-    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
-    res.json({ user: publicStaff(user) });
-  },
-);
-
-staffRouter.post('/logout', async (req, res) => {
-  await destroySession(readSessionToken(req));
-  res.clearCookie(SESSION_COOKIE, sessionCookieOptions({ withMaxAge: false }));
-  res.status(204).end();
-});
+staffRouter.use(staffLoginRouter);
 
 /* ---------- Daqui para baixo, só com sessão ---------- */
 
@@ -329,10 +284,15 @@ staffRouter.patch('/professionals/:id', requireAdmin, async (req, res) => {
   const role = typeof req.body?.role === 'string' ? req.body.role.trim().replace(/\s+/g, ' ') : '';
   if (name.length < 2 || name.length > 60) throw new HttpError(400, 'O nome precisa ter entre 2 e 60 caracteres.');
   if (role.length > 80) throw new HttpError(400, 'A função pode ter no máximo 80 caracteres.');
+  // active: false tira a profissional do agendamento (saiu do salão); o histórico continua.
+  if (req.body?.active !== undefined && typeof req.body.active !== 'boolean') {
+    throw new HttpError(400, 'active deve ser true ou false.');
+  }
 
   const { rows } = await query(
-    'UPDATE professionals SET name = $2, role = $3 WHERE id = $1 RETURNING id, name, role, active',
-    [id, name, role],
+    `UPDATE professionals SET name = $2, role = $3, active = COALESCE($4, active)
+      WHERE id = $1 RETURNING id, name, role, active`,
+    [id, name, role, req.body?.active ?? null],
   );
   if (!rows.length) throw new HttpError(404, 'Profissional não encontrada.');
   res.json(rows[0]);
@@ -441,3 +401,7 @@ staffRouter.patch('/services/:id', requireAdmin, async (req, res) => {
 /* ---------- Agendamento pela recepção (só admin) — routes/staffBookings.js ---------- */
 
 staffRouter.use(staffBookingsRouter);
+
+/* ---------- Usuários (só admin) e Minha conta — routes/staffUsers.js ---------- */
+
+staffRouter.use(staffUsersRouter);

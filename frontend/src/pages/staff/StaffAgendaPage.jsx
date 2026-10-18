@@ -211,10 +211,11 @@ export default function StaffAgendaPage() {
     [date, to, professionalId, isAdmin],
   );
   const pros = useAsync(() => (isAdmin ? getProfessionals() : Promise.resolve([])), [isAdmin]);
-  // Horários livres do dia (só admin, na visão Dia): clicar abre o agendamento já preenchido.
-  const showFree = isAdmin && view === 'day' && date >= today;
+  // Horários livres do dia (visão Dia): clicar abre o agendamento já preenchido.
+  // Profissional vê e agenda só na própria agenda (o servidor garante).
+  const showFree = view === 'day' && date >= today;
   const freeSlots = useAsync(
-    () => (showFree ? getFreeSlots({ date, professionalId }) : Promise.resolve(null)),
+    () => (showFree ? getFreeSlots({ date, professionalId: isAdmin ? professionalId : undefined }) : Promise.resolve(null)),
     [showFree, date, professionalId],
   );
   const openNewBooking = (initial) => setNewBooking({ key: Date.now(), initial: initial || { date: date >= today ? date : today } });
@@ -276,11 +277,9 @@ export default function StaffAgendaPage() {
           <span className="t-caps t-accent">{isAdmin ? 'Agenda do salão' : 'Minha agenda'}</span>
           <h1 className="t-display-l">{title}</h1>
         </div>
-        {isAdmin ? (
-          <Button className="staff-new-booking" onClick={() => openNewBooking()}>
-            Novo agendamento
-          </Button>
-        ) : null}
+        <Button className="staff-new-booking" onClick={() => openNewBooking()}>
+          Novo agendamento
+        </Button>
 
         <div className="staff-toolbar">
           <div className="staff-segment" role="group" aria-label="Período">
@@ -453,6 +452,7 @@ export default function StaffAgendaPage() {
         <NewBookingDialog
           key={newBooking.key}
           initial={newBooking.initial}
+          user={user}
           onClose={() => setNewBooking(null)}
           onSessionExpired={sessionExpired}
           onCreated={(created) => {

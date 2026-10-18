@@ -14,8 +14,15 @@ export const config = {
   cancelMinHours: Number.isInteger(Number(process.env.CANCEL_MIN_HOURS)) && process.env.CANCEL_MIN_HOURS !== ''
     ? Math.max(0, Number(process.env.CANCEL_MIN_HOURS))
     : 24,
-  // Quantos dias o login da equipe dura antes de pedir a senha de novo.
+  // Quantos dias o login da profissional dura antes de pedir a senha de novo.
   staffSessionDays: Number(process.env.STAFF_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.STAFF_SESSION_DAYS)) : 7,
+  // Admin vê dados de todas as clientes e gerencia usuários: sessão curta (horas).
+  staffAdminSessionHours:
+    Number(process.env.STAFF_ADMIN_SESSION_HOURS) > 0 ? Math.floor(Number(process.env.STAFF_ADMIN_SESSION_HOURS)) : 12,
+  // Quantas contas admin ativas podem existir ao mesmo tempo.
+  maxAdmins: Number(process.env.MAX_ADMINS) > 0 ? Math.floor(Number(process.env.MAX_ADMINS)) : 4,
+  // Chave para cifrar segredos no banco (2FA). Obrigatória em produção; gere com: openssl rand -base64 48
+  appSecret: (process.env.APP_SECRET || '').trim(),
   // Login das clientes com Google: Client ID criado no Google Cloud (vazio = login com Google desligado).
   googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   // Proxy na frente da API (Render, Nginx…): quantos saltos confiar para req.ip ser o IP real da cliente.

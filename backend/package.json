@@ -14,6 +14,8 @@
     "staff:create": "node --env-file-if-exists=.env src/scripts/staff.js create",
     "staff:password": "node --env-file-if-exists=.env src/scripts/staff.js password",
     "staff:deactivate": "node --env-file-if-exists=.env src/scripts/staff.js deactivate",
+    "staff:reset-2fa": "node --env-file-if-exists=.env src/scripts/staff.js reset-2fa",
+    "staff:reset-2fa:prod": "node --env-file=.env.production src/scripts/staff.js reset-2fa",
     "test": "node --test"
   },
   "engines": {

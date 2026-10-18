@@ -15,6 +15,10 @@ import StaffLoginPage from './pages/staff/StaffLoginPage.jsx';
 import StaffAgendaPage from './pages/staff/StaffAgendaPage.jsx';
 import StaffProfessionalsPage from './pages/staff/StaffProfessionalsPage.jsx';
 import StaffServicesPage from './pages/staff/StaffServicesPage.jsx';
+import StaffUsersPage from './pages/staff/StaffUsersPage.jsx';
+import StaffAccountPage from './pages/staff/StaffAccountPage.jsx';
+import StaffInvitePage from './pages/staff/StaffInvitePage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 
 export default function App() {
   return (
@@ -34,15 +38,19 @@ export default function App() {
         <Route path="acompanhar/:code" element={<TrackBookingPage />} />
         <Route path="entrar" element={<LoginPage />} />
         <Route path="minhas-reservas" element={<MyBookingsPage />} />
+        <Route path="privacidade" element={<PrivacyPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       {/* Área da equipe: layout próprio, sem o menu do site */}
       <Route path="equipe/entrar" element={<StaffLoginPage />} />
+      <Route path="equipe/convite/:token" element={<StaffInvitePage />} />
       <Route path="equipe" element={<StaffLayout />}>
         <Route index element={<StaffAgendaPage />} />
         <Route path="profissionais" element={<StaffProfessionalsPage />} />
         <Route path="servicos" element={<StaffServicesPage />} />
+        <Route path="usuarios" element={<StaffUsersPage />} />
+        <Route path="conta" element={<StaffAccountPage />} />
       </Route>
     </Routes>
   );

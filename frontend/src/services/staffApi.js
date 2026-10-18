@@ -29,8 +29,12 @@ export const markReminderSent = (id) =>
 export const getStaffProfessionals = () => request('/staff/professionals', withSession);
 
 /** PATCH /staff/professionals/:id { name, role } → profissional atualizada (só admin) */
-export const updateProfessional = (id, { name, role }) =>
-  request(`/staff/professionals/${encodeURIComponent(id)}`, { method: 'PATCH', body: { name, role }, ...withSession });
+export const updateProfessional = (id, { name, role, active }) =>
+  request(`/staff/professionals/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { name, role, active },
+    ...withSession,
+  });
 
 /** PUT /staff/professionals/:id/services { serviceIds } → { id, serviceIds } (só admin) */
 export const updateProfessionalServices = (id, serviceIds) =>
@@ -69,3 +73,45 @@ export const getFreeSlots = ({ date, professionalId }) =>
  */
 export const createStaffBooking = (booking) =>
   request('/staff/bookings', { method: 'POST', body: booking, ...withSession });
+
+/* ---------- Acesso: 2FA da admin, convite, usuários e a própria conta ---------- */
+
+/** POST /staff/login/2fa { challenge, code } → { user } e grava o cookie de sessão */
+export const verifyStaff2fa = (challenge, code) =>
+  request('/staff/login/2fa', { method: 'POST', body: { challenge, code }, ...withSession });
+
+/** GET /staff/invites/:token → { name, email, role, purpose } · 404 link vencido ou usado */
+export const getStaffInvite = (token) => request(`/staff/invites/${encodeURIComponent(token)}`);
+
+/** POST /staff/invites/:token { password } → { ok, role, needs2fa } */
+export const acceptStaffInvite = (token, password) =>
+  request(`/staff/invites/${encodeURIComponent(token)}`, { method: 'POST', body: { password } });
+
+/** GET /staff/users → { users, maxAdmins } (só admin) */
+export const getStaffUsers = () => request('/staff/users', withSession);
+
+/** POST /staff/users { name, email, role, professionalId | newProfessional } → { user, link } (só admin) */
+export const inviteStaffUser = (data) => request('/staff/users', { method: 'POST', body: data, ...withSession });
+
+/** PATCH /staff/users/:id { name?, role?, professionalId?, active? } → { user } (só admin) */
+export const updateStaffUser = (id, data) =>
+  request(`/staff/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: data, ...withSession });
+
+/** POST /staff/users/:id/link → { user, link } — convite de novo ou redefinição de senha (só admin) */
+export const newStaffLink = (id) =>
+  request(`/staff/users/${encodeURIComponent(id)}/link`, { method: 'POST', ...withSession });
+
+/** POST /staff/users/:id/reset-2fa → { user } (só admin) */
+export const resetStaff2fa = (id) =>
+  request(`/staff/users/${encodeURIComponent(id)}/reset-2fa`, { method: 'POST', ...withSession });
+
+/** DELETE /staff/users/:id → 204 — só convites nunca usados (só admin) */
+export const deleteStaffInvite = (id) =>
+  request(`/staff/users/${encodeURIComponent(id)}`, { method: 'DELETE', ...withSession });
+
+/** GET /staff/audit → { entries } — registro de ações sobre contas (só admin) */
+export const getStaffAudit = () => request('/staff/audit', withSession);
+
+/** PUT /staff/account/password { currentPassword, newPassword } → 204 */
+export const changeMyStaffPassword = (currentPassword, newPassword) =>
+  request('/staff/account/password', { method: 'PUT', body: { currentPassword, newPassword }, ...withSession });

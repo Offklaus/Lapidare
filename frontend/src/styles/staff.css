@@ -617,3 +617,71 @@
   .staff-nb__services li .t-caption { grid-column: 1; grid-row: 2; }
   .staff-nb__services li .staff-nb__remove { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* Login: verificação em duas etapas (app autenticador) */
+.staff-2fa { display: flex; flex-direction: column; gap: var(--space-4); }
+.staff-2fa__steps { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+.staff-2fa__qr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.staff-2fa__qr img {
+  width: 180px;
+  height: 180px;
+  padding: var(--space-2);
+  background: #ffffff; /* QR precisa de fundo claro para a câmera ler, em qualquer tema */
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.staff-2fa__secret { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.staff-2fa__secret code,
+.staff-linkbox__url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 20px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* Usuários: link de convite (aparece uma vez), lista e registro de ações */
+.staff-linkbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 760px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--success-soft);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-md);
+}
+.staff-linkbox__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.staff-user-row__meta { margin: 0; overflow-wrap: anywhere; }
+.staff-user-row__actions { flex-wrap: wrap; }
+.staff-audit { display: flex; flex-direction: column; gap: var(--space-2); max-width: 760px; margin-top: var(--space-5); }
+.staff-audit__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.staff-audit__list li { padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+
+/* Minha conta */
+.staff-account { margin: 0; display: grid; gap: var(--space-3); max-width: 760px; }
+.staff-account div { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-3); }
+.staff-account dt { color: var(--ink-muted); font-size: 14px; }
+.staff-account dd { margin: 0; overflow-wrap: anywhere; }
+.staff-account__form { max-width: 520px; }
+
+@media (max-width: 560px) {
+  .staff-2fa__qr { flex-direction: column; align-items: stretch; }
+  .staff-2fa__qr img { align-self: center; }
+  .staff-linkbox { padding: var(--space-4); }
+  .staff-linkbox__actions .lp-btn { flex: 1 1 100%; min-height: 44px; }
+  .staff-user-row__actions { flex-direction: column; align-items: stretch; }
+  .staff-account div { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+}

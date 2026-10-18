@@ -46,3 +46,10 @@ services:
       # Preencha no painel do Render (não fica no git).
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Chave que cifra o 2FA das admins no banco. O Render gera uma aleatória; NUNCA troque depois
+      # (os apps autenticadores já cadastrados param de funcionar e cada admin precisa cadastrar de novo).
+      - key: APP_SECRET
+        generateValue: true
+      # Quantas admins ativas podem existir ao mesmo tempo.
+      - key: MAX_ADMINS
+        value: "4"

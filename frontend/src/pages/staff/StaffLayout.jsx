@@ -58,16 +58,26 @@ export default function StaffLayout() {
               <span className="brand__sub">EQUIPE</span>
             </span>
           </Link>
-          {user?.role === 'admin' ? (
+          {user ? (
             <nav className="site-nav staff-nav-links" aria-label="Área da equipe">
               <NavLink to="/equipe" end className="site-nav__link">
                 Agenda
               </NavLink>
-              <NavLink to="/equipe/profissionais" className="site-nav__link">
-                Profissionais
-              </NavLink>
-              <NavLink to="/equipe/servicos" className="site-nav__link">
-                Serviços
+              {user.role === 'admin' ? (
+                <>
+                  <NavLink to="/equipe/profissionais" className="site-nav__link">
+                    Profissionais
+                  </NavLink>
+                  <NavLink to="/equipe/servicos" className="site-nav__link">
+                    Serviços
+                  </NavLink>
+                  <NavLink to="/equipe/usuarios" className="site-nav__link">
+                    Usuários
+                  </NavLink>
+                </>
+              ) : null}
+              <NavLink to="/equipe/conta" className="site-nav__link">
+                Minha conta
               </NavLink>
             </nav>
           ) : null}

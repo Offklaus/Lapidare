@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 import { addDays, weekday } from '../src/lib/time.js';
+import { currentStep, hotp } from '../src/lib/totp.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (!process.env.DATABASE_URL && existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
@@ -44,14 +45,20 @@ async function call(method, route, { body, cookie } = {}) {
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
+/** Login completo: senha e, para admin, o código do app autenticador (cadastrado no primeiro login). */
 async function login(email, password) {
-  const res = await fetch(`${api}/staff/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
+  const post = (route, body) =>
+    fetch(`${api}${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const res = await post('/staff/login', { email, password });
   assert.equal(res.status, 200, `login de ${email}`);
-  return res.headers.get('set-cookie').split(';')[0];
+  const first = await res.json();
+  if (!first.twoFactor) return res.headers.get('set-cookie').split(';')[0];
+
+  for (const offset of [0, 1]) {
+    const second = await post('/staff/login/2fa', { challenge: first.challenge, code: hotp(first.secret, currentStep() + offset) });
+    if (second.status === 200) return second.headers.get('set-cookie').split(';')[0];
+  }
+  throw new Error(`2FA de ${email} falhou`);
 }
 
 const manual = (overrides = {}) => ({
@@ -184,12 +191,31 @@ describe('agendamento pela recepção', { skip }, () => {
     assert.equal(res.status, 400);
   });
 
-  test('só admin: perfil profissional → 403, sem login → 401', async () => {
-    const body = manual({ start: `${DAY}T16:00` });
-    assert.equal((await call('POST', '/staff/bookings', { cookie: proCookie, body })).status, 403);
-    assert.equal((await call('POST', '/staff/bookings', { body })).status, 401);
-    assert.equal((await call('GET', '/staff/clients?q=te', { cookie: proCookie })).status, 403);
-    assert.equal((await call('POST', '/staff/clients', { cookie: proCookie, body: body.client })).status, 403);
+  test('profissional só agenda na própria agenda e só vê as próprias clientes; sem login → 401', async () => {
+    // pro@lapidare.test é a conta da pro-1.
+    const other = manual({ professionalId: 'pro-3', start: `${DAY}T16:00` });
+    assert.equal((await call('POST', '/staff/bookings', { cookie: proCookie, body: other })).status, 403);
+    assert.equal((await call('POST', '/staff/bookings', { body: other })).status, 401);
+
+    // A cliente do primeiro teste foi atendida pela pro-1: aparece. Uma cliente só da pro-3 não aparece.
+    await db.query(`INSERT INTO clients (name, phone) VALUES ('Teste Só Pro3', '11944443333')`);
+    const mine = await call('GET', '/staff/clients?q=teste', { cookie: proCookie });
+    assert.equal(mine.status, 200);
+    assert.ok(mine.body.some((c) => c.name === 'Teste Recepção'));
+    assert.ok(!mine.body.some((c) => c.name === 'Teste Só Pro3'));
+    // ...a não ser que ela digite o WhatsApp completo (a cliente passou o número para ela).
+    const byPhone = await call('GET', '/staff/clients?q=11944443333', { cookie: proCookie });
+    assert.deepEqual(byPhone.body.map((c) => c.name), ['Teste Só Pro3']);
+
+    // Horários livres: só os dela, mesmo pedindo outra.
+    const free = await call('GET', `/staff/free-slots?date=${DAY}&professionalId=pro-3`, { cookie: proCookie });
+    assert.deepEqual(free.body.professionals.map((p) => p.id), ['pro-1']);
+
+    const own = await call('POST', '/staff/bookings', {
+      cookie: proCookie,
+      body: manual({ start: `${DAY}T12:00`, fitIn: true, confirmFitIn: true, client: { name: 'Teste Da Pro', phone: '11944442222' } }),
+    });
+    assert.equal(own.status, 201, JSON.stringify(own.body));
   });
 
   test('cadastro rápido não duplica cliente com o mesmo WhatsApp', async () => {

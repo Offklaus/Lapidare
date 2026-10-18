@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
-import { Badge, BOOKING_STATUS } from '../components/index.js';
+import { Badge, Button, BOOKING_STATUS } from '../components/index.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
-import { getMyBookings } from '../services/customerApi.js';
+import { deleteMyAccount, getMyBookings } from '../services/customerApi.js';
 import { formatDuration, formatPrice, formatShortDate } from '../lib/format.js';
 import useAsync from '../hooks/useAsync.js';
 import { Loading, LoadError } from './booking/steps/StepStatus.jsx';
@@ -101,6 +101,68 @@ export default function MyBookingsPage() {
           </div>
         </section>
       ) : null}
+
+      <DeleteAccount onDeleted={() => setCustomer(null)} />
     </div>
+  );
+}
+
+/** LGPD: a cliente apaga a própria conta. Os agendamentos continuam com o salão (registro do atendimento). */
+function DeleteAccount({ onDeleted }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const remove = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await deleteMyAccount();
+      onDeleted();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Não conseguimos excluir agora. Tente de novo.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="account__section account__privacy" aria-labelledby="privacy-title">
+      <h2 id="privacy-title" className="t-heading-sm">
+        Seus dados
+      </h2>
+      <p className="t-body-sm t-muted">
+        Guardamos seu nome, e-mail e foto da conta Google só para mostrar suas reservas.{' '}
+        <Link to="/privacidade">Política de privacidade</Link>.
+      </p>
+      {confirming ? (
+        <p className="t-body-sm">
+          Sua conta e seu login saem do site agora. Os agendamentos já feitos continuam com o salão (é o registro do
+          atendimento) e você ainda consegue acompanhá-los pelo código.
+        </p>
+      ) : null}
+      {error ? (
+        <p className="staff-booking__error t-caption" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="account__privacy-actions">
+        {confirming ? (
+          <>
+            <Button variant="danger" size="sm" loading={busy} onClick={remove}>
+              Excluir minha conta
+            </Button>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirming(false)}>
+              Voltar
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => setConfirming(true)}>
+            Excluir minha conta
+          </Button>
+        )}
+      </div>
+    </section>
   );
 }

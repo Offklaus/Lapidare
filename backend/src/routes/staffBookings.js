@@ -1,5 +1,7 @@
-/* Agendamento pela recepção (só admin): busca e cadastro rápido de clientes, horários livres do dia
-   e criação do agendamento. Montado em staff.js, depois do login (requireStaff). */
+/* Agendamento pela equipe: busca e cadastro rápido de clientes, horários livres do dia e criação do
+   agendamento. Montado em staff.js, depois do login (requireStaff).
+   Admin agenda para qualquer profissional. Profissional só para si mesma (o servidor garante), e na busca
+   só vê clientes que já atendeu, ou quem ela achar pelo WhatsApp completo (LGPD: o mínimo necessário). */
 import { Router } from 'express';
 
 import { config } from '../config.js';
@@ -7,7 +9,6 @@ import { query } from '../db/pool.js';
 import { formatCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
 import { parseClientQuery, parseManualBooking } from '../lib/manualBookingInput.js';
-import { requireAdmin } from '../lib/staffAuth.js';
 import { minToTime, timeToMin, toAbs } from '../lib/time.js';
 import { parseCustomer, parseDate } from '../lib/validate.js';
 import { slotsForProfessional } from '../services/availability.js';
@@ -18,21 +19,31 @@ export const staffBookingsRouter = Router();
 
 const publicClient = (c) => ({ id: c.id, name: c.name, phone: c.phone });
 
-/** GET /staff/clients?q= → [{ id, name, phone, bookings, lastBookingDate }] (até 10; por nome ou WhatsApp) */
-staffBookingsRouter.get('/clients', requireAdmin, async (req, res) => {
+/** Profissional logada → id da profissional dela (o escopo); admin → null (salão inteiro). */
+const ownProfessional = (req) => (req.staff.role === 'professional' ? req.staff.professional_id : null);
+
+/**
+ * GET /staff/clients?q= → [{ id, name, phone, bookings, lastBookingDate }] (até 10; por nome ou WhatsApp)
+ * Profissional: só clientes que ela já atendeu, ou o WhatsApp completo digitado.
+ */
+staffBookingsRouter.get('/clients', async (req, res) => {
   const { text, digits } = parseClientQuery(req.query.q);
+  const own = ownProfessional(req);
   const { rows } = await query(
     `SELECT c.id, c.name, c.phone,
             count(b.id)::int AS bookings,
             to_char(max(b.starts_at) AT TIME ZONE $3, 'YYYY-MM-DD') AS last_booking_date
        FROM clients c
-       LEFT JOIN bookings b ON b.client_id = c.id
-      WHERE ($2::text IS NOT NULL AND c.phone LIKE '%' || $2 || '%')
-         OR ($2::text IS NULL AND lower(c.name) LIKE '%' || lower($1) || '%')
+       LEFT JOIN bookings b ON b.client_id = c.id AND ($4::text IS NULL OR b.professional_id = $4)
+      WHERE (($2::text IS NOT NULL AND c.phone LIKE '%' || $2 || '%')
+             OR ($2::text IS NULL AND lower(c.name) LIKE '%' || lower($1) || '%'))
+        AND ($4::text IS NULL
+             OR EXISTS (SELECT 1 FROM bookings x WHERE x.client_id = c.id AND x.professional_id = $4)
+             OR ($2::text IS NOT NULL AND length($2) >= 10 AND c.phone = $2))
       GROUP BY c.id
       ORDER BY (lower(c.name) LIKE lower($1) || '%') DESC, max(b.starts_at) DESC NULLS LAST, c.name
       LIMIT 10`,
-    [text.replace(/[\\%_]/g, (ch) => `\\${ch}`), digits, config.timezone],
+    [text.replace(/[\\%_]/g, (ch) => `\\${ch}`), digits, config.timezone, own],
   );
   res.json(
     rows.map((c) => ({ ...publicClient(c), bookings: c.bookings, lastBookingDate: c.last_booking_date })),
@@ -43,7 +54,7 @@ staffBookingsRouter.get('/clients', requireAdmin, async (req, res) => {
  * POST /staff/clients { name, phone } — cadastro rápido.
  * → 201 { id, name, phone } novo · 200 { ..., existing: true } se o WhatsApp já estava cadastrado (não duplica)
  */
-staffBookingsRouter.post('/clients', requireAdmin, async (req, res) => {
+staffBookingsRouter.post('/clients', async (req, res) => {
   const { name, phone } = parseCustomer(req.body);
   const client = await upsertClient({ name, phone }, { createdByStaffId: req.staff.id });
   if (client.created) return res.status(201).json(publicClient(client));
@@ -55,12 +66,13 @@ staffBookingsRouter.post('/clients', requireAdmin, async (req, res) => {
  * Inícios livres de cada profissional no dia, de `step` em `step` minutos (mesmo cálculo do site), para a
  * recepção clicar e abrir o agendamento já preenchido.
  */
-staffBookingsRouter.get('/free-slots', requireAdmin, async (req, res) => {
+staffBookingsRouter.get('/free-slots', async (req, res) => {
   const date = parseDate(req.query.date, 'date');
   const only =
-    typeof req.query.professionalId === 'string' && req.query.professionalId && req.query.professionalId !== 'all'
+    ownProfessional(req) ||
+    (typeof req.query.professionalId === 'string' && req.query.professionalId && req.query.professionalId !== 'all'
       ? req.query.professionalId
-      : null;
+      : null);
   const { rows: list } = await query(
     'SELECT id, name FROM professionals WHERE active AND ($1::text IS NULL OR id = $1) ORDER BY sort, name',
     [only],
@@ -102,9 +114,11 @@ const conflictError = (conflicts) =>
  * → 201 { id, code, status, professionalId, date, time, endTime, client } · 400 dados inválidos ·
  *   403 não admin · 409 conflito de horário { message, conflicts: [...] }
  */
-staffBookingsRouter.post('/bookings', requireAdmin, async (req, res) => {
+staffBookingsRouter.post('/bookings', async (req, res) => {
   const input = parseManualBooking(req.body);
   const { serviceIds, professionalId, date, time } = input;
+  const own = ownProfessional(req);
+  if (own && professionalId !== own) throw new HttpError(403, 'Você só pode agendar na sua própria agenda.');
 
   const { rows: services } = await query('SELECT id FROM services WHERE id = ANY($1::text[]) AND active', [serviceIds]);
   if (services.length !== serviceIds.length) throw new HttpError(400, 'Serviço não encontrado ou fora do agendamento.');

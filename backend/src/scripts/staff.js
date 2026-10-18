@@ -115,11 +115,29 @@ async function deactivate(client) {
   console.log('Acesso removido. Para reativar, troque a senha com npm run staff:password.');
 }
 
-const COMMANDS = { create, password: changePassword, deactivate };
+/** Emergência: admin perdeu o celular e não há outra admin para reiniciar o 2FA pelo painel. */
+async function reset2fa(client) {
+  const email = await askEmail();
+  const { rows } = await client.query(
+    `UPDATE staff_users SET totp_secret_enc = NULL, totp_enabled_at = NULL, totp_last_step = NULL, updated_at = now()
+      WHERE email = $1 RETURNING id`,
+    [email],
+  );
+  if (!rows.length) throw new Error('Nenhuma conta com esse e-mail.');
+  await client.query('DELETE FROM staff_sessions WHERE user_id = $1', [rows[0].id]);
+  await client.query('DELETE FROM staff_login_challenges WHERE user_id = $1', [rows[0].id]);
+  await client.query(
+    "INSERT INTO staff_audit_log (actor_id, action, target_user_id, details) VALUES (NULL, '2fa_reset', $1, '{\"reason\":\"terminal\"}')",
+    [rows[0].id],
+  );
+  console.log('2FA reiniciado. No próximo login a pessoa cadastra o app autenticador de novo.');
+}
+
+const COMMANDS = { create, password: changePassword, deactivate, 'reset-2fa': reset2fa };
 
 async function main() {
   if (!COMMANDS[command]) {
-    console.error('Uso: npm run staff:create | staff:password -- --email X | staff:deactivate -- --email X');
+    console.error('Uso: npm run staff:create | staff:password -- --email X | staff:deactivate -- --email X | staff:reset-2fa -- --email X');
     process.exit(1);
   }
   if (!process.env.DATABASE_URL) {

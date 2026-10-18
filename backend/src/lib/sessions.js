@@ -10,20 +10,24 @@ export const hashToken = (token) => createHash('sha256').update(token).digest('h
 
 /**
  * table: tabela de sessões · ownerColumn: coluna do dono (user_id, customer_id)
- * cookieName: nome do cookie · days(): duração em dias (lida na hora, vem da config)
+ * cookieName: nome do cookie · days(): duração padrão em dias (lida na hora, vem da config)
+ * sameSite: 'lax' (cliente: volta do login com Google) ou 'strict' (equipe: o cookie nunca sai em
+ * pedidos iniciados por outro site).
  */
-export function sessionStore({ table, ownerColumn, cookieName, days }) {
+export function sessionStore({ table, ownerColumn, cookieName, days, sameSite = 'lax' }) {
+  const defaultMinutes = () => days() * 24 * 60;
+
   return {
     cookieName,
 
-    /** SameSite=Lax: o navegador não manda o cookie em POST vindo de outro site. */
-    cookieOptions({ withMaxAge = true } = {}) {
+    /** minutes: duração desta sessão (o cookie vence junto com ela no banco). */
+    cookieOptions({ withMaxAge = true, minutes = defaultMinutes() } = {}) {
       return {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite,
         secure: config.isProduction,
         path: '/',
-        ...(withMaxAge ? { maxAge: days() * 24 * 60 * 60 * 1000 } : {}),
+        ...(withMaxAge ? { maxAge: minutes * 60 * 1000 } : {}),
       };
     },
 
@@ -31,19 +35,27 @@ export function sessionStore({ table, ownerColumn, cookieName, days }) {
       return parseCookies(req.headers.cookie)[cookieName];
     },
 
-    async create(ownerId) {
+    async create(ownerId, { minutes = defaultMinutes() } = {}) {
       const token = randomBytes(32).toString('base64url');
       await query(`DELETE FROM ${table} WHERE expires_at < now()`);
       await query(
         `INSERT INTO ${table} (token_hash, ${ownerColumn}, expires_at)
-         VALUES ($1, $2, now() + make_interval(days => $3::int))`,
-        [hashToken(token), ownerId, days()],
+         VALUES ($1, $2, now() + make_interval(mins => $3::int))`,
+        [hashToken(token), ownerId, minutes],
       );
       return token;
     },
 
     async destroy(token) {
       if (token) await query(`DELETE FROM ${table} WHERE token_hash = $1`, [hashToken(token)]);
+    },
+
+    /** Encerra todas as sessões do dono (menos a `keepToken`, se informada). */
+    async destroyAll(ownerId, { keepToken = null, db = { query } } = {}) {
+      await db.query(`DELETE FROM ${table} WHERE ${ownerColumn} = $1 AND ($2::text IS NULL OR token_hash <> $2)`, [
+        ownerId,
+        keepToken ? hashToken(keepToken) : null,
+      ]);
     },
   };
 }

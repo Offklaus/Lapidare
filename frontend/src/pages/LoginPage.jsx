@@ -92,8 +92,8 @@ export default function LoginPage() {
 
         <div className="account-login__links t-body-sm">
           <Link to="/acompanhar">Tem o código? Acompanhe sem entrar</Link>
-          <Link to="/equipe/entrar" className="t-muted">
-            É da equipe? Área da equipe
+          <Link to="/privacidade" className="t-muted">
+            Como cuidamos dos seus dados
           </Link>
         </div>
       </div>

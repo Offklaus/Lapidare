@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 
 import { BookingSummary, Button, DateStrip, Modal, TextField, TimeSlotGrid } from '../../components/index.js';
-import { getAvailability, getServices, getSlots } from '../../services/api.js';
+import { getAvailability, getProfessionals, getServices, getSlots } from '../../services/api.js';
 import { createClient, createStaffBooking, getStaffProfessionals, searchClients } from '../../services/staffApi.js';
 import useAsync from '../../hooks/useAsync.js';
 import {
@@ -196,11 +196,13 @@ function ClientPicker({ value, onChange, onSessionExpired }) {
  * initial: { professionalId, date, time } quando aberto a partir de um horário livre da agenda.
  * Montado de novo a cada abertura (a página usa `key`), então o estado começa limpo.
  */
-export default function NewBookingDialog({ initial, onClose, onCreated, onSessionExpired }) {
+export default function NewBookingDialog({ initial, user, onClose, onCreated, onSessionExpired }) {
   const today = toISODate(new Date());
+  // Profissional agenda só na própria agenda (o servidor também recusa outra).
+  const lockedPro = user?.role === 'professional' ? user.professionalId : null;
   const [client, setClient] = useState(null);
   const [serviceIds, setServiceIds] = useState([]); // na ordem em que serão feitos (em sequência)
-  const [professionalId, setProfessionalId] = useState(initial?.professionalId || '');
+  const [professionalId, setProfessionalId] = useState(lockedPro || initial?.professionalId || '');
   const [date, setDate] = useState(initial?.date || today);
   const [time, setTime] = useState(initial?.time || '');
   const [fitIn, setFitIn] = useState(false);
@@ -213,14 +215,25 @@ export default function NewBookingDialog({ initial, onClose, onCreated, onSessio
   const [conflicts, setConflicts] = useState([]);
   const [slotsVersion, setSlotsVersion] = useState(0);
 
-  const services = useAsync(() => getServices(), []);
-  const pros = useAsync(() => getStaffProfessionals(), []);
+  const services = useAsync(() => getServices(lockedPro || undefined), [lockedPro]);
+  const pros = useAsync(
+    () =>
+      lockedPro
+        ? getProfessionals().then((list) =>
+            list.filter((p) => p.id === lockedPro).map((p) => ({ ...p, active: true, serviceIds: null })),
+          )
+        : getStaffProfessionals(),
+    [lockedPro],
+  );
 
   const chosen = serviceIds.map((id) => services.data?.find((s) => s.id === id)).filter(Boolean);
   const key = serviceIds.join(',');
   const duration = totalDuration(chosen);
   // Só quem faz TODOS os serviços escolhidos (são feitos em sequência pela mesma profissional).
-  const proOptions = (pros.data || []).filter((p) => p.active && serviceIds.every((id) => p.serviceIds.includes(id)));
+  // serviceIds null = lista já filtrada (profissional): os serviços mostrados são todos dela.
+  const proOptions = (pros.data || []).filter(
+    (p) => p.active && (p.serviceIds === null || serviceIds.every((id) => p.serviceIds.includes(id))),
+  );
   const pro = proOptions.find((p) => p.id === professionalId) || null;
   const ready = !!(chosen.length && pro);
 
@@ -400,7 +413,7 @@ export default function NewBookingDialog({ initial, onClose, onCreated, onSessio
               className="lp-field__input"
               value={professionalId}
               onChange={(e) => setProfessionalId(e.target.value)}
-              disabled={!serviceIds.length}
+              disabled={!serviceIds.length || !!lockedPro}
             >
               <option value="">{serviceIds.length ? 'Escolha a profissional' : 'Escolha o serviço primeiro'}</option>
               {proOptions.map((p) => (

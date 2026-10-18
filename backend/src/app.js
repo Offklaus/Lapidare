@@ -7,6 +7,7 @@ import helmet from 'helmet';
 
 import { config } from './config.js';
 import { clientIp } from './lib/clientIp.js';
+import { sameOrigin } from './lib/sameOrigin.js';
 import { HttpError } from './lib/errors.js';
 import { servicesRouter } from './routes/services.js';
 import { professionalsRouter } from './routes/professionals.js';
@@ -59,6 +60,13 @@ const allowOrigin = (origin) =>
 // credentials: o painel da equipe e a área da cliente usam cookie de sessão nas chamadas.
 const api = express.Router();
 api.use(cors({ origin: (origin, callback) => callback(null, allowOrigin(origin)), credentials: true }));
+// Pedidos que mudam dados só valem vindos do próprio site (contra CSRF). Ver lib/sameOrigin.js.
+api.use(sameOrigin(allowOrigin));
+// Respostas da API têm dados pessoais: navegador e proxies não guardam cópia (LGPD).
+api.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 api.use(express.json({ limit: '10kb' }));
 
 api.get('/health', (req, res) => res.json({ ok: true }));

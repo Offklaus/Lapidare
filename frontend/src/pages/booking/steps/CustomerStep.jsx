@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { TextField } from '../../../components/index.js';
 import { formatPhone } from '../../../lib/format.js';
 import { validateEmail, validateName, validatePhone } from '../../../lib/validation.js';
@@ -48,6 +50,10 @@ export default function CustomerStep({ customer, errors, onChange, onErrors, onS
         onChange={(e) => onChange('email', e.target.value)}
         onBlur={handleBlur('email')}
       />
+      <p className="t-caption t-muted form-grid__note">
+        Usamos seu nome e WhatsApp só para este agendamento: confirmar, lembrar e falar com você sobre ele. Não
+        enviamos promoções nem passamos seus dados para ninguém. <Link to="/privacidade">Política de privacidade</Link>.
+      </p>
       {/* Enter no teclado envia o formulário e avança */}
       <button type="submit" className="visually-hidden" tabIndex={-1}>
         Continuar

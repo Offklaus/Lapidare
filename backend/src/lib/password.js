@@ -11,6 +11,35 @@ const P = 1;
 const KEY_LENGTH = 64;
 
 export const MIN_PASSWORD_LENGTH = 10;
+export const MAX_PASSWORD_LENGTH = 128;
+
+// Senhas que aparecem no topo das listas de vazamentos (e variações óbvias do salão).
+const COMMON = new Set([
+  '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'qwertyuiop', 'asdfghjkl1',
+  'password123', 'password12', 'senha12345', 'senha123456', 'mudar12345', 'trocar1234', 'abc1234567',
+  'iloveyou12', 'q1w2e3r4t5', 'qwerty1234', '123mudar123', 'admin12345', 'administrador',
+  'lapidare123', 'lapidare2024', 'lapidare2025', 'lapidare2026', 'lapidarebeauty', 'salao12345',
+]);
+
+/**
+ * Regras para senha nova da equipe. → mensagem dizendo o que corrigir, ou null se está boa.
+ * Sem exigir símbolo "por obrigação": tamanho e não ser óbvia protegem mais.
+ */
+export function checkPasswordStrength(password, { email = '', name = '' } = {}) {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`;
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) return `A senha pode ter no máximo ${MAX_PASSWORD_LENGTH} caracteres.`;
+  const lower = password.toLowerCase();
+  if (COMMON.has(lower)) return 'Essa senha é muito comum. Escolha outra.';
+  if (/^(.)\1+$/.test(password)) return 'A senha não pode ser um caractere repetido.';
+  if (/^\d+$/.test(password)) return 'Use letras também, não só números.';
+  const parts = [email.split('@')[0], ...String(name).split(/\s+/)]
+    .map((p) => p.toLowerCase())
+    .filter((p) => p.length >= 4);
+  if (parts.some((p) => lower.includes(p))) return 'A senha não pode conter seu nome ou seu e-mail.';
+  return null;
+}
 
 export async function hashPassword(password) {
   const salt = randomBytes(16);
