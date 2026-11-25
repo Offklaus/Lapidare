@@ -5,7 +5,8 @@
 
 services:
   - type: web
-    name: lapidare
+    # Vira o endereço: salon-beauty.onrender.com (se o nome estiver em uso, o Render acrescenta um final).
+    name: salon-beauty
     runtime: node
     plan: free
     # Scripts do package.json da raiz: compila o site e instala só o necessário da API.
@@ -50,6 +51,9 @@ services:
       # (os apps autenticadores já cadastrados param de funcionar e cada admin precisa cadastrar de novo).
       - key: APP_SECRET
         generateValue: true
+      # Gmail(s) que viram admin no primeiro "Entrar com Google" em /equipe (separe por vírgula). Preencha no painel.
+      - key: ADMIN_EMAILS
+        sync: false
       # Quantas admins ativas podem existir ao mesmo tempo.
       - key: MAX_ADMINS
         value: "4"

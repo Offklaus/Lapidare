@@ -50,7 +50,7 @@ export default function DateTimeStep({
     return (
       <div className="empty-state">
         <p className="t-body">Sem horários livres nas próximas duas semanas.</p>
-        <p className="t-body-sm t-muted">Escolha outra profissional ou fale com a gente pelo Instagram.</p>
+        <p className="t-body-sm t-muted">Escolha outra profissional ou fale com a gente pelo WhatsApp do salão.</p>
       </div>
     );
   }

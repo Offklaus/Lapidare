@@ -3,9 +3,9 @@
 /** Canais que a recepção escolhe no "Novo agendamento" (mesma lista que o servidor aceita). */
 export const ORIGINS = [
   ['whatsapp', 'WhatsApp'],
-  ['instagram', 'Instagram Direct'],
   ['telefone', 'Telefone'],
   ['presencial', 'Presencial'],
 ];
 
-export const ORIGIN_LABEL = Object.fromEntries([['site', 'Site'], ...ORIGINS]);
+// 'instagram' saiu da lista (o salão não usa mais); o rótulo fica para agendamentos antigos anotados assim.
+export const ORIGIN_LABEL = Object.fromEntries([['site', 'Site'], ['instagram', 'Instagram Direct'], ...ORIGINS]);

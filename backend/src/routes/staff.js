@@ -6,6 +6,7 @@ import { formatCode } from '../lib/bookingCode.js';
 import { HttpError } from '../lib/errors.js';
 import { parseServiceInput, serviceSlug } from '../lib/serviceInput.js';
 import { staffBookingsRouter } from './staffBookings.js';
+import { staffDevLoginRouter } from './staffDevLogin.js';
 import { staffLoginRouter } from './staffLogin.js';
 import { staffUsersRouter } from './staffUsers.js';
 import { BOOKING_SERVICES_SQL, bookingServicesView } from '../services/bookingServices.js';
@@ -21,6 +22,9 @@ const ACTIVE = ['pending', 'confirmed'];
 /* ---------- Sem sessão: login (senha + 2FA da admin), saída e link de convite — routes/staffLogin.js ---------- */
 
 staffRouter.use(staffLoginRouter);
+
+// Só no computador de desenvolvimento (DEV_STAFF_LOGIN=true, nunca em produção): admin sem senha nem 2FA.
+if (config.devStaffLogin && !config.isProduction) staffRouter.use(staffDevLoginRouter);
 
 /* ---------- Daqui para baixo, só com sessão ---------- */
 
@@ -64,7 +68,7 @@ function toStaffBooking(b) {
     reminderSentAt: b.reminder_sent_at,
     daysUntil: b.days_until, // 0 = hoje, 1 = amanhã (calendário do salão)
     customer: { name: b.customer_name, phone: b.customer_phone, email: b.customer_email },
-    origin: b.origin, // 'site' ou o canal anotado pela recepção (whatsapp, instagram, telefone, presencial)
+    origin: b.origin, // 'site' ou o canal anotado pela recepção (whatsapp, telefone, presencial)
     notes: b.notes,
     fitIn: b.fit_in,
     ...bookingServicesView(b), // service (resumo) + services (cada parte, com o horário)

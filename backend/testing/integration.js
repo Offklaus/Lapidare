@@ -45,7 +45,7 @@ async function adminQuery(testUrl, sql) {
  * Cria o banco `database`, sobe a API numa porta livre e devolve ferramentas para os testes:
  * { api, db, call, login, createStaff, cookieOf, secrets, close }.
  */
-export async function startApi(database) {
+export async function startApi(database, { devStaffLogin = false } = {}) {
   const testUrl = testDatabaseUrl(database);
   assert.ok(testUrl, 'sem Postgres local para os testes de integração');
 
@@ -61,6 +61,8 @@ export async function startApi(database) {
   process.env.NODE_ENV = 'test';
   process.env.CLIENT_IP_HEADER = '';
   process.env.APP_SECRET = 'segredo-so-para-testes-0123456789-abcdefghij';
+  // Atalho de admin do desenvolvimento: desligado nos testes, mesmo que o backend/.env ligue (só o teste dele liga).
+  process.env.DEV_STAFF_LOGIN = devStaffLogin ? 'true' : 'false';
   const { config } = await import('../src/config.js');
   // Trava de segurança: se algum módulo leu a configuração antes (import no topo do teste), a API estaria
   // no banco de verdade. Aí o teste para aqui, antes de tocar em qualquer dado.

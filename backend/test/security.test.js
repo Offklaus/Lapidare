@@ -38,8 +38,8 @@ test('segredo novo tem 160 bits e vira um endereço otpauth válido', () => {
   const secret = generateSecret();
   assert.equal(base32Decode(secret).length, 20);
   assert.match(
-    otpauthUrl({ secret, account: 'nicole@exemplo.com' }),
-    /^otpauth:\/\/totp\/Lapidare%20Beauty%3Anicole%40exemplo\.com\?secret=/,
+    otpauthUrl({ secret, account: 'admin@exemplo.com' }),
+    /^otpauth:\/\/totp\/Salon%20Beauty%3Aadmin%40exemplo\.com\?secret=/,
   );
 });
 
@@ -58,8 +58,8 @@ test('cifra do segredo: abre o que fechou; texto mexido ou de outro propósito �
 });
 
 test('senha da equipe: tamanho, comuns, só números, nome ou e-mail', () => {
-  const who = { email: 'nicole.pereira@exemplo.com', name: 'Nicole Pereira' };
-  const weak = ['curta', '1234567890', 'aaaaaaaaaa', 'Senha12345', 'lapidare123', 'nicole-2026-xx', 'pereira-bonita', 'x'.repeat(129)];
+  const who = { email: 'teste.exemplo@exemplo.com', name: 'Teste Exemplo' };
+  const weak = ['curta', '1234567890', 'aaaaaaaaaa', 'Senha12345', 'lapidare123', 'teste-2026-xx', 'exemplo-bonita', 'x'.repeat(129)];
   for (const password of weak) {
     assert.ok(checkPasswordStrength(password, who), `deveria recusar: ${password.slice(0, 20)}`);
   }

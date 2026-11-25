@@ -341,9 +341,11 @@
 
   .only-mobile { display: block; }
 
+  /* Fixa no rodapé da tela: os botões ficam sempre no mesmo lugar, sem acompanhar a rolagem */
   .mobile-bar {
     display: flex;
-    gap: var(--space-3);
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
     position: fixed;
     left: 0;
     right: 0;
@@ -357,13 +359,48 @@
     box-shadow: var(--shadow-md);
   }
 
+  /* Tablet e celular deitado: conteúdo da barra com a largura da etapa (até 720px), centralizado */
+  @media (min-width: 561px) {
+    .mobile-bar {
+      padding-left: max(var(--space-5), calc((100% - 720px) / 2));
+      padding-right: max(var(--space-5), calc((100% - 720px) / 2));
+    }
+  }
+
+  .mobile-bar .lp-btn { min-height: 48px; }
   .mobile-bar .lp-btn--primary,
   .mobile-bar .lp-btn--action { flex: 1; }
 
-  /* Reserva a altura da barra fixa na página inteira, para ela não cobrir o rodapé */
-  .site:has(.mobile-bar) {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  /* O que foi escolhido e o total, numa linha acima dos botões */
+  .mobile-bar__info {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--ink-muted);
   }
+
+  .mobile-bar__what { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  .mobile-bar__total {
+    flex: none;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Agendar no celular: sem rodapé do site (a barra fixa é o fim da tela) e com espaço
+     no fim da página para a barra não cobrir o último cartão */
+  .site:has(.mobile-bar) .site-footer { display: none; }
+  .site:has(.mobile-bar) { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .site:has(.mobile-bar__info) { padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+
+  /* Campo em foco (teclado aberto) rola para cima da barra, nunca fica escondido atrás dela */
+  html:has(.mobile-bar) { scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
 }
 
 /* Sucesso */
@@ -685,6 +722,15 @@
 
   .track__form { flex-direction: column; align-items: stretch; }
   .track__form > .lp-btn { margin-top: 0; }
+}
+
+/* Tela de toque (celular e tablet em qualquer largura, inclusive iPad deitado): alvos de 44px para o dedo */
+@media (pointer: coarse) {
+  .site-nav__link { display: inline-flex; align-items: center; min-height: 44px; }
+  .brand { min-height: 44px; }
+  .theme-toggle { width: 44px; height: 44px; }
+  .site-footer__inner a,
+  .account-login__links a { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
 /* Agendamento: vários serviços escolhidos, na ordem em que serão feitos */

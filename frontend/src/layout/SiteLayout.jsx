@@ -54,10 +54,10 @@ export default function SiteLayout() {
       ) : null}
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link to="/" className="brand" aria-label="Lapidare Beauty — início">
+          <Link to="/" className="brand" aria-label="Salon Beauty — início">
             <Facet size={28} />
             <span className="brand__name">
-              <span className="brand__word">LAPIDARE</span>
+              <span className="brand__word">SALON</span>
               <span className="brand__sub">BEAUTY</span>
             </span>
           </Link>
@@ -100,11 +100,8 @@ export default function SiteLayout() {
         <div className="container">
           <div className="site-footer__rule" />
           <div className="site-footer__inner">
-            <span className="t-caps">Lapidare Beauty</span>
+            <span className="t-caps">Salon Beauty</span>
             <span>Lapidamos sua beleza com naturalidade.</span>
-            <a href="https://instagram.com/lapidare.beauty" target="_blank" rel="noreferrer">
-              @lapidare.beauty
-            </a>
             <Link to="/privacidade">Privacidade</Link>
           </div>
         </div>

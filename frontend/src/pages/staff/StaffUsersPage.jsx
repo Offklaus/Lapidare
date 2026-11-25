@@ -10,6 +10,7 @@ import {
   inviteStaffUser,
   newStaffLink,
   resetStaff2fa,
+  unlinkStaffGoogle,
   updateStaffUser,
 } from '../../services/staffApi.js';
 import useAsync from '../../hooks/useAsync.js';
@@ -31,18 +32,24 @@ const ACTIONS = {
   password_changed: 'trocou a própria senha',
   user_updated: 'alterou o acesso de',
   '2fa_enabled': 'ativou a verificação em duas etapas',
+  dev_login: 'entrou pelo atalho de desenvolvimento',
   '2fa_reset': 'reiniciou a verificação em duas etapas de',
+  google_linked: 'conectou a conta Google para entrar',
+  admin_from_config: 'entrou como admin pelo e-mail definido na configuração do servidor',
+  google_unlinked: 'desconectou a conta Google de',
 };
 const CONFIRM_TEXT = {
   deactivate: 'A pessoa sai na hora de todos os aparelhos e não consegue mais entrar. O histórico continua.',
   '2fa': 'A pessoa sai de todos os aparelhos e cadastra o app autenticador de novo no próximo acesso.',
   delete: 'O convite é apagado. Esta pessoa ainda não tinha entrado.',
+  google: 'A pessoa sai de todos os aparelhos e a conta Google conectada deixa de entrar. Se o e-mail dela for de uma conta Google, ela pode conectar de novo; para bloquear de vez, desative.',
 };
 const CONFIRM_BUTTON = {
   deactivate: 'Confirmar desativação',
   link: 'Gerar link',
   '2fa': 'Confirmar reinício',
   delete: 'Excluir convite',
+  google: 'Desconectar Google',
 };
 
 const when = (iso) =>
@@ -60,8 +67,8 @@ function LinkBox({ link, user, onClose }) {
   const first = user.name.split(' ')[0];
   const text =
     link.purpose === 'invite'
-      ? `Olá, ${first}! Este é o seu acesso à área da equipe da Lapidare Beauty. Crie sua senha por este link (vale ${link.expiresInHours} h, uma vez só): ${url}`
-      : `Olá, ${first}! Crie sua nova senha da área da equipe da Lapidare Beauty por este link (vale ${link.expiresInHours} h, uma vez só): ${url}`;
+      ? `Olá, ${first}! Este é o seu acesso à área da equipe da Salon Beauty. Crie sua senha por este link (vale ${link.expiresInHours} h, uma vez só): ${url}`
+      : `Olá, ${first}! Crie sua nova senha da área da equipe da Salon Beauty por este link (vale ${link.expiresInHours} h, uma vez só): ${url}`;
 
   return (
     <div className="staff-linkbox" role="status">
@@ -191,6 +198,10 @@ function InviteForm({ professionals, takenProfessionalIds, onCreated, onCancel, 
           Admin vê dados de todas as clientes. No primeiro acesso, cadastra o app autenticador (2FA).
         </p>
       ) : null}
+      <p className="t-caption t-muted">
+        Se o e-mail for de uma conta Google (Gmail), a pessoa também pode entrar pelo botão Entrar com Google, sem
+        criar senha nem cadastrar o app.
+      </p>
       {isNewPro ? (
         <p className="t-caption t-muted">
           Depois, marque em Profissionais quais serviços ela faz: só então ela aparece no agendamento.
@@ -241,6 +252,7 @@ function UserRow({ user, isSelf, professionals, takenProfessionalIds, onChanged,
   const confirmAction = async () => {
     if (confirming === 'deactivate') onChanged((await updateStaffUser(user.id, { active: false })).user);
     if (confirming === '2fa') onChanged((await resetStaff2fa(user.id)).user);
+    if (confirming === 'google') onChanged((await unlinkStaffGoogle(user.id)).user);
     if (confirming === 'delete') {
       await deleteStaffInvite(user.id);
       onChanged(null, user.id);
@@ -273,7 +285,8 @@ function UserRow({ user, isSelf, professionals, takenProfessionalIds, onChanged,
       <p className="t-body-sm t-muted staff-user-row__meta">
         {user.email}
         {user.professionalName ? ` · agenda de ${user.professionalName}` : ''}
-        {user.role === 'admin' ? ` · 2FA ${user.twoFactor ? 'ativo' : 'pendente (cadastra no próximo acesso)'}` : ''}
+        {user.google ? ' · entra com Google' : ''}
+        {user.role === 'admin' && !user.google ? ` · 2FA ${user.twoFactor ? 'ativo' : 'pendente (cadastra no próximo acesso)'}` : ''}
         {user.lastLoginAt ? ` · último acesso ${when(user.lastLoginAt)}` : ' · ainda não entrou'}
         {user.linkExpiresAt ? ` · link vale até ${when(user.linkExpiresAt)}` : ''}
       </p>
@@ -362,6 +375,11 @@ function UserRow({ user, isSelf, professionals, takenProfessionalIds, onChanged,
               {user.role === 'admin' && user.twoFactor ? (
                 <Button size="sm" variant="secondary" onClick={() => setConfirming('2fa')}>
                   Reiniciar 2FA
+                </Button>
+              ) : null}
+              {user.google ? (
+                <Button size="sm" variant="secondary" onClick={() => setConfirming('google')}>
+                  Desconectar Google
                 </Button>
               ) : null}
               {user.status === 'invited' && !user.lastLoginAt ? (

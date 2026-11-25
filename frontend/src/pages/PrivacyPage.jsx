@@ -5,7 +5,7 @@ export default function PrivacyPage() {
   return (
     <div className="container privacy">
       <header className="privacy__head">
-        <span className="t-caps t-accent">Lapidare Beauty</span>
+        <span className="t-caps t-accent">Salon Beauty</span>
         <h1 className="t-display-l">Política de privacidade</h1>
         <p className="t-body t-muted">Como cuidamos dos seus dados. Última atualização: outubro de 2026.</p>
       </header>
@@ -83,12 +83,8 @@ export default function PrivacyPage() {
             “Excluir minha conta”.
           </li>
           <li>
-            <strong>Outros pedidos</strong> (como apagar um agendamento antigo): fale com a gente pelo WhatsApp do salão
-            ou pelo Instagram{' '}
-            <a href="https://instagram.com/lapidare.beauty" target="_blank" rel="noreferrer">
-              @lapidare.beauty
-            </a>
-            . Respondemos em até 15 dias.
+            <strong>Outros pedidos</strong> (como apagar um agendamento antigo): fale com a gente pelo WhatsApp do salão.
+            Respondemos em até 15 dias.
           </li>
         </ul>
       </section>

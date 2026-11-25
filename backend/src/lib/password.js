@@ -18,7 +18,7 @@ const COMMON = new Set([
   '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'qwertyuiop', 'asdfghjkl1',
   'password123', 'password12', 'senha12345', 'senha123456', 'mudar12345', 'trocar1234', 'abc1234567',
   'iloveyou12', 'q1w2e3r4t5', 'qwerty1234', '123mudar123', 'admin12345', 'administrador',
-  'lapidare123', 'lapidare2024', 'lapidare2025', 'lapidare2026', 'lapidarebeauty', 'salao12345',
+  'lapidare123', 'lapidare2024', 'lapidare2025', 'lapidare2026', 'lapidarebeauty', 'salonbeauty', 'salon123', 'salon2025', 'salon2026', 'salao12345',
 ]);
 
 /**

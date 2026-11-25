@@ -4,7 +4,9 @@ import QRCode from 'qrcode';
 
 import { Button, Facet, TextField } from '../../components/index.js';
 import { USE_MOCK } from '../../services/api.js';
-import { getStaffMe, staffLogin, verifyStaff2fa } from '../../services/staffApi.js';
+import GoogleSignInButton from '../../components/GoogleSignInButton.jsx';
+import { getCustomerConfig } from '../../services/customerApi.js';
+import { getStaffMe, staffDevLogin, staffGoogleLogin, staffLogin, verifyStaff2fa } from '../../services/staffApi.js';
 import { MockModeNotice } from './StaffLayout.jsx';
 
 /** "JBSWY3DPEHPK3PXP" → "JBSW Y3DP EHPK 3PXP" (mais fácil de digitar no app). */
@@ -68,7 +70,7 @@ function TwoFactorStep({ step, onDone, onRestart }) {
           </div>
         </>
       ) : (
-        <p className="t-body">Abra o app autenticador e digite o código de 6 números da Lapidare Beauty.</p>
+        <p className="t-body">Abra o app autenticador e digite o código de 6 números da Salon Beauty.</p>
       )}
 
       <TextField
@@ -98,6 +100,43 @@ function TwoFactorStep({ step, onDone, onRestart }) {
   );
 }
 
+/** SÓ DESENVOLVIMENTO: entra como "Admin (dev)" sem senha nem 2FA. A API só aceita com DEV_STAFF_LOGIN=true. */
+function DevLogin({ onDone }) {
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const enter = async () => {
+    setSending(true);
+    setError('');
+    try {
+      await staffDevLogin();
+      onDone();
+    } catch (err) {
+      setSending(false);
+      setError(
+        err.status === 401 || err.status === 404
+          ? 'Atalho desligado na API. Em backend/.env coloque DEV_STAFF_LOGIN=true e reinicie a API.'
+          : err.message || 'Não conseguimos entrar pelo atalho.',
+      );
+    }
+  };
+
+  return (
+    <div className="staff-dev-login">
+      <span className="t-caps t-accent">Desenvolvimento</span>
+      <p className="t-body-sm t-muted">Só aparece no computador (npm run dev). Entra como admin sem senha nem código.</p>
+      <Button variant="secondary" block loading={sending} onClick={enter}>
+        Entrar como admin (dev)
+      </Button>
+      {error ? (
+        <div className="notice notice--danger" role="alert">
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function StaffLoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -113,6 +152,27 @@ export default function StaffLoginPage() {
       .then(() => navigate('/equipe', { replace: true }))
       .catch(() => {});
   }, [navigate]);
+
+  // Botão do Google: o mesmo Client ID do login das clientes (vazio = botão escondido).
+  const [googleClientId, setGoogleClientId] = useState(null);
+  useEffect(() => {
+    if (USE_MOCK) return;
+    getCustomerConfig()
+      .then((cfg) => setGoogleClientId(cfg?.googleClientId || null))
+      .catch(() => {});
+  }, []);
+
+  const handleGoogle = async (credential) => {
+    setSending(true);
+    setError('');
+    try {
+      await staffGoogleLogin(credential);
+      navigate('/equipe', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Não conseguimos entrar com o Google. Tente de novo.');
+      setSending(false);
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -142,7 +202,7 @@ export default function StaffLoginPage() {
       <div className="staff-login__card">
         <span className="staff-login__brand">
           <Facet size={20} />
-          <span className="t-caps">Lapidare · Equipe</span>
+          <span className="t-caps">Salon Beauty · Equipe</span>
         </span>
         <div>
           <h1 className="t-display-l">{step ? 'Verificação em duas etapas' : 'Área da equipe'}</h1>
@@ -197,6 +257,20 @@ export default function StaffLoginPage() {
             <p className="t-caption t-muted">Esqueceu a senha? Peça a uma admin do salão um novo link de acesso.</p>
           </form>
         ) : null}
+
+        {/* Entrar com Google: só para quem a admin cadastrou em Usuários com o e-mail daquela conta Google. */}
+        {!USE_MOCK && !step && googleClientId ? (
+          <div className="staff-login__google">
+            <span className="staff-login__or t-caption t-muted">ou</span>
+            {sending ? null : (
+              <GoogleSignInButton clientId={googleClientId} onCredential={handleGoogle} onError={setError} />
+            )}
+            <p className="t-caption t-muted">Use a conta Google do e-mail que a admin cadastrou para você.</p>
+          </div>
+        ) : null}
+
+        {/* Só no `npm run dev`: no site publicado o Vite troca DEV por false e este trecho some do código. */}
+        {import.meta.env.DEV && !USE_MOCK && !step ? <DevLogin onDone={() => navigate('/equipe', { replace: true })} /> : null}
 
         <Link to="/" className="t-body-sm">
           Voltar ao site

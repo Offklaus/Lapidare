@@ -112,7 +112,7 @@ export default function StaffInvitePage() {
       <div className="staff-login__card">
         <span className="staff-login__brand">
           <Facet size={20} />
-          <span className="t-caps">Lapidare · Equipe</span>
+          <span className="t-caps">Salon Beauty · Equipe</span>
         </span>
         <h1 className="t-display-l">Sua senha</h1>
         {content}

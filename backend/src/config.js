@@ -19,6 +19,12 @@ export const config = {
   // Admin vê dados de todas as clientes e gerencia usuários: sessão curta (horas).
   staffAdminSessionHours:
     Number(process.env.STAFF_ADMIN_SESSION_HOURS) > 0 ? Math.floor(Number(process.env.STAFF_ADMIN_SESSION_HOURS)) : 12,
+  // E-mails (Google) que viram admin sozinhos no primeiro "Entrar com Google" da área da equipe, sem convite.
+  // Separados por vírgula. Vazio = só entra quem foi cadastrado em Usuários.
+  adminEmails: (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
   // Quantas contas admin ativas podem existir ao mesmo tempo.
   maxAdmins: Number(process.env.MAX_ADMINS) > 0 ? Math.floor(Number(process.env.MAX_ADMINS)) : 4,
   // Chave para cifrar segredos no banco (2FA). Obrigatória em produção; gere com: openssl rand -base64 48
@@ -39,4 +45,11 @@ export const config = {
   customerSessionDays:
     Number(process.env.CUSTOMER_SESSION_DAYS) > 0 ? Math.floor(Number(process.env.CUSTOMER_SESSION_DAYS)) : 30,
   maxDays: 31,
+  // SÓ DESENVOLVIMENTO: botão "Entrar como admin (dev)" no login da equipe, sem senha nem 2FA (routes/staffDevLogin.js).
+  devStaffLogin: process.env.DEV_STAFF_LOGIN === 'true',
 };
+
+// Trava: o atalho de desenvolvimento nunca liga em produção. Melhor o servidor não subir do que abrir o painel.
+if (config.isProduction && config.devStaffLogin) {
+  throw new Error('DEV_STAFF_LOGIN não pode estar ligado em produção. Remova a variável do ambiente.');
+}

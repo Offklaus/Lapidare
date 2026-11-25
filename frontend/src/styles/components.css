@@ -151,8 +151,8 @@
 .lp-summary > .lp-badge { align-self:flex-start; }
 
 /* ---------- Celular ---------- */
-@media (max-width: 960px) {
-  /* Alvo de toque confortável para o polegar (44px) */
+/* Alvo de toque confortável para o polegar (44px): telas estreitas e qualquer tela de toque (tablet) */
+@media (max-width: 960px), (pointer: coarse) {
   .lp-btn { min-height:44px; }
 }
 @media (max-width: 560px) {

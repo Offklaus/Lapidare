@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookingSummary, Button, Stepper } from '../../components/index.js';
 import { useCustomer } from '../../context/CustomerContext.jsx';
 import { createBooking } from '../../services/api.js';
-import { formatDuration, formatShortDate, phoneDigits } from '../../lib/format.js';
+import { formatDuration, formatPrice, formatShortDate, phoneDigits } from '../../lib/format.js';
 import { endOf, servicesLines, totalDuration, totalPrice } from '../../lib/bookingServices.js';
 import { hasErrors, validateCustomer } from '../../lib/validation.js';
 import { STEP, STEPS, bookingReducer, canAdvance, initialState } from './bookingReducer.js';
@@ -131,6 +131,14 @@ export default function BookingPage() {
   const isFirstStep = step === STEP.PROFESSIONAL;
   const showAside = !isFirstStep; // resumo lateral a partir da 2ª etapa
 
+  // Barra do celular: "Manicure · sex, 23 de out, 10:00" ou "2 serviços · 1 h 45 min", com o total ao lado.
+  // Na confirmação o resumo completo já aparece na página.
+  const showBarInfo = services.length > 0 && step >= STEP.SERVICE && step < STEP.CONFIRM;
+  const barWhat = [
+    services.length === 1 ? services[0].name : `${services.length} serviços`,
+    date && time ? `${formatShortDate(date)}, ${time}` : formatDuration(totalDuration(services)),
+  ].join(' · ');
+
   return (
     <div className="container booking">
       <Stepper steps={STEPS} current={step} />
@@ -224,7 +232,15 @@ export default function BookingPage() {
         ) : null}
       </div>
 
+      {/* Celular: barra fixa no rodapé da tela, sempre no mesmo lugar. O resumo lateral não cabe,
+          então a barra mostra o essencial (o que foi escolhido e o total) acima dos botões. */}
       <div className="mobile-bar">
+        {showBarInfo ? (
+          <p className="mobile-bar__info">
+            <span className="mobile-bar__what">{barWhat}</span>
+            <span className="mobile-bar__total">{formatPrice(total)}</span>
+          </p>
+        ) : null}
         {!isFirstStep ? (
           <Button variant="secondary" onClick={back} disabled={submitting}>
             Voltar

@@ -47,6 +47,7 @@ export const publicStaff = (u) => ({
   role: u.role,
   professionalId: u.professional_id,
   twoFactor: Boolean(u.totp_enabled_at),
+  google: Boolean(u.google_sub), // conta Google conectada (entra pelo botão do Google)
 });
 
 /** Middleware: exige sessão válida de conta ativa e coloca a pessoa em req.staff. */
@@ -55,10 +56,11 @@ export async function requireStaff(req, res, next) {
   if (!token) throw new HttpError(401, 'Entre com seu e-mail e senha para ver a agenda.');
 
   const { rows } = await query(
-    `SELECT u.id, u.name, u.email, u.role, u.professional_id, u.totp_enabled_at
+    `SELECT u.id, u.name, u.email, u.role, u.professional_id, u.totp_enabled_at, u.google_sub
        FROM staff_sessions s
        JOIN staff_users u ON u.id = s.user_id
-      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.active AND u.password_hash IS NOT NULL`,
+      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.active
+        AND (u.password_hash IS NOT NULL OR u.google_sub IS NOT NULL)`,
     [hashToken(token)],
   );
   if (!rows.length) throw new HttpError(401, 'Sua sessão expirou. Entre de novo.');

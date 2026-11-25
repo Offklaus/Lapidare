@@ -10,6 +10,17 @@ export const staffLogin = (email, password) =>
 
 export const staffLogout = () => request('/staff/logout', { method: 'POST', ...withSession });
 
+/** POST /staff/login/google { credential } → { user } e grava o cookie (só contas cadastradas em Usuários) */
+export const staffGoogleLogin = (credential) =>
+  request('/staff/login/google', { method: 'POST', body: { credential }, ...withSession });
+
+/** POST /staff/users/:id/unlink-google → { user } — desconecta a conta Google da pessoa (só admin) */
+export const unlinkStaffGoogle = (id) =>
+  request(`/staff/users/${encodeURIComponent(id)}/unlink-google`, { method: 'POST', ...withSession });
+
+/** POST /staff/dev-login → { user } — SÓ DESENVOLVIMENTO: admin sem senha nem 2FA (precisa de DEV_STAFF_LOGIN=true na API) */
+export const staffDevLogin = () => request('/staff/dev-login', { method: 'POST', ...withSession });
+
 /** GET /staff/me → { user: { id, name, email, role: 'admin' | 'professional', professionalId } } · 401 sem sessão */
 export const getStaffMe = () => request('/staff/me', withSession);
 

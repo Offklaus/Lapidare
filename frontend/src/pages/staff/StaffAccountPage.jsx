@@ -57,6 +57,14 @@ export default function StaffAccountPage() {
           <dt>Perfil</dt>
           <dd>{user.role === 'admin' ? 'Admin: área da equipe inteira e usuários' : 'Profissional: a própria agenda'}</dd>
         </div>
+        <div>
+          <dt>Login com Google</dt>
+          <dd>
+            {user.google
+              ? 'Conectado: você pode entrar pelo botão Entrar com Google.'
+              : 'Não conectado. Se seu e-mail for de uma conta Google, use o botão Entrar com Google na tela de login.'}
+          </dd>
+        </div>
         {user.role === 'admin' ? (
           <div>
             <dt>Verificação em duas etapas</dt>

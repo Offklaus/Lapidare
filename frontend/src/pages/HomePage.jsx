@@ -15,7 +15,7 @@ export default function HomePage() {
     <>
       <section className="hero">
         <div className="container hero__inner">
-          <span className="t-caps hero__eyebrow">Lapidare Beauty</span>
+          <span className="t-caps hero__eyebrow">Salon Beauty</span>
           <h1 className="t-display-xl">Lapidamos sua beleza com naturalidade</h1>
           <p className="t-body hero__lead">
             Unhas, alongamento, sobrancelhas, cílios, nanopigmentação e laser. Escolha a profissional, o

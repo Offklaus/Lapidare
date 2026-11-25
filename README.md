@@ -1,7 +1,10 @@
-# Lapidare Beauty — Agendamento
+# Salon Beauty — Agendamento
 
-Webservice de agendamento do estúdio Lapidare (unhas, alongamento, sobrancelhas, cílios,
-nanopigmentação e laser). A identidade visual vem do design system **Lapidare**.
+Webservice de agendamento do Salon Beauty (unhas, alongamento, sobrancelhas, cílios,
+nanopigmentação e laser). A identidade visual vem do design system do projeto.
+
+> O nome técnico antigo, `lapidare`, continua só por dentro: pasta do repositório e banco de dados.
+> Mudar esses nomes exigiria migrar o banco. O serviço no Render é `salon-beauty` (`salon-beauty.onrender.com`).
 
 ```
 Lapidare/
@@ -26,7 +29,7 @@ publica uma **demonstração** do site em `https://<usuario>.github.io/<reposito
 ## Produção no Render + Supabase
 
 O site e a API rodam no **Render**; o banco é um Postgres no **Supabase**.
-O `render.yaml` na raiz é um **Blueprint** que cria o serviço web `lapidare`. É um serviço só — a API
+O `render.yaml` na raiz é um **Blueprint** que cria o serviço web `salon-beauty`. É um serviço só — a API
 entrega o site compilado e responde em `/api` —, então site e API ficam no mesmo endereço e os
 cookies de login funcionam.
 
@@ -45,7 +48,7 @@ cookies de login funcionam.
    - `DATABASE_CA_CERT`: o conteúdo do `.crt` (a conexão é criptografada e o servidor é conferido);
    - `GOOGLE_CLIENT_ID`.
 2. A cada início o serviço roda `npm run db:migrate` (só migrations novas, sem mexer nos dados do salão).
-3. No Google Cloud, adicione o endereço do site (ex.: `https://lapidare.onrender.com`) em
+3. No Google Cloud, adicione o endereço do site (ex.: `https://salon-beauty.onrender.com`) em
    *Origens JavaScript autorizadas*.
 
 **Primeira vez:** coloque os dados iniciais e crie a conta da admin a partir do seu computador,
@@ -176,7 +179,7 @@ em produção a própria API entrega o front compilado (`frontend/dist`).
 
 Erros sempre voltam como `{ message }`, com um texto que pode ser mostrado para a cliente.
 
-**Vários serviços no mesmo agendamento** (ex.: manicure + pedicure com a Nicole):
+**Vários serviços no mesmo agendamento** (ex.: manicure + pedicure com a mesma profissional):
 
 - `/professionals`, `/availability`, `/availability/slots`, `POST /bookings` e `POST /staff/bookings` aceitam
   `serviceIds` (lista no corpo, ou `serviceIds=manicure,pedicure` na URL) — até 4 serviços. `serviceId` (um só)
@@ -206,7 +209,7 @@ Reserva criada com a cliente logada (`POST /bookings` com o cookie) fica ligada 
 **Configurar o Google** (uma vez):
 
 1. Em https://console.cloud.google.com crie um projeto (ou use um existente).
-2. *APIs e serviços → Tela de permissão OAuth*: tipo **Externo**, nome "Lapidare Beauty", e-mail de suporte; pode publicar em produção (só usa nome e e-mail).
+2. *APIs e serviços → Tela de permissão OAuth*: tipo **Externo**, nome "Salon Beauty", e-mail de suporte; pode publicar em produção (só usa nome e e-mail).
 3. *APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth*: tipo **Aplicativo da Web**.
 4. Em **Origens JavaScript autorizadas**, adicione o endereço do site (em desenvolvimento, `http://localhost:5173`; depois, o domínio real com `https://`).
 5. Copie o **ID do cliente** para `GOOGLE_CLIENT_ID` no `backend/.env` e reinicie a API.
@@ -231,6 +234,20 @@ A área da equipe não tem link no site público: a equipe entra pelo endereço 
 - 2FA da admin: TOTP (RFC 6238), cadastrado no primeiro login pelo QR code; código não pode ser reusado; segredo
   cifrado com AES-256-GCM (`APP_SECRET`). Perdeu o celular: outra admin reinicia em *Usuários*, ou
   `npm run staff:reset-2fa -- --email x` (`staff:reset-2fa:prod` em produção).
+- **Entrar com Google (equipe):** além de e-mail e senha, a equipe pode usar o botão do Google na tela de login.
+  Só entra quem uma admin cadastrou em *Usuários* com o e-mail daquela conta Google. No primeiro login a conta
+  Google fica presa à conta da equipe (`staff_users.google_sub`); outra conta Google com o mesmo e-mail não entra.
+  Por decisão do salão, quem entra pelo Google **não** digita o código do app autenticador. A admin pode
+  *Desconectar Google* em *Usuários*; para bloquear a pessoa de vez, desative a conta.
+- **Admin definida por e-mail (`ADMIN_EMAILS`):** com `ADMIN_EMAILS=dona@gmail.com` no Render, esse Gmail vira
+  admin sozinho no primeiro *Entrar com Google* em `/equipe`, sem convite nem terminal (vários e-mails: separe por
+  vírgula). Respeita o limite de admins; desativar a conta em *Usuários* continua valendo (ela não é recriada).
+  Tirar o e-mail da variável não apaga a conta já criada: para tirar o acesso, desative em *Usuários*.
+- **Só no computador de desenvolvimento:** com `DEV_STAFF_LOGIN=true` no `backend/.env` (e a API reiniciada),
+  o login da equipe no `npm run dev` mostra **Entrar como admin (dev)**: entra na conta *Admin (dev)*
+  (`admin.dev@lapidare.test`) sem senha nem 2FA. Só aceita pedidos do próprio computador, cada entrada vai para o
+  registro de ações, o botão não existe no site compilado e, com `NODE_ENV=production`, a API se recusa a subir
+  se a variável estiver ligada.
 - Desativar, mudar perfil, gerar link de nova senha ou reiniciar 2FA derruba as sessões da pessoa na hora.
   Ninguém muda o próprio perfil nem se desativa; sempre sobra uma admin ativa.
 - Registro de ações (`staff_audit_log`, *Usuários → Registro de ações*): quem convidou, mudou ou tirou acesso, sem
@@ -276,7 +293,7 @@ Rotas com cookie de sessão `httpOnly` (o front chama com `credentials: 'include
 | GET | `/staff/clients?q=` | busca por nome ou WhatsApp → `[{ id, name, phone, bookings, lastBookingDate }]` (até 10) |
 | POST | `/staff/clients` | cadastro rápido `{ name, phone }` → `201` nova · `200 { …, existing: true }` se o WhatsApp já existe (não duplica) |
 | GET | `/staff/free-slots?date=&professionalId=` | inícios livres de cada profissional no dia (mesmo cálculo do site) |
-| POST | `/staff/bookings` | `{ clientId \| client: { name, phone }, serviceId, professionalId, start: 'YYYY-MM-DDTHH:MM', origin: 'whatsapp'\|'instagram'\|'telefone'\|'presencial', notes?, fitIn?, confirmFitIn? }` → `201 { id, code, date, time, endTime, client }` · `400` dados inválidos, profissional que não faz o serviço, horário fora da lista sem encaixe ou encaixe sem confirmação · `403` não admin · `409 { message, conflicts: [{ code, customerName, service, time, endTime }] }` |
+| POST | `/staff/bookings` | `{ clientId \| client: { name, phone }, serviceId, professionalId, start: 'YYYY-MM-DDTHH:MM', origin: 'whatsapp'\|'telefone'\|'presencial', notes?, fitIn?, confirmFitIn? }` → `201 { id, code, date, time, endTime, client }` · `400` dados inválidos, profissional que não faz o serviço, horário fora da lista sem encaixe ou encaixe sem confirmação · `403` não admin · `409 { message, conflicts: [{ code, customerName, service, time, endTime }] }` |
 
 - `start` é no fuso do salão; o fim é calculado pela duração do serviço (o front não manda fim). No banco tudo fica em UTC.
 - Sem encaixe vale a mesma regra de horários do site. **Encaixe** (`fitIn` + `confirmFitIn`) pode ficar fora do

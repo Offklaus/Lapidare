@@ -4,7 +4,8 @@ import { isISODate, isTime } from './time.js';
 import { parseCustomer, parseId, parseServiceIds } from './validate.js';
 
 /** Canais por onde a cliente marcou com a recepção ('site' é só para o agendamento feito por ela). */
-export const ORIGINS = ['whatsapp', 'instagram', 'telefone', 'presencial'];
+// 'instagram' saiu (o salão não usa mais); agendamentos antigos com essa origem continuam no banco.
+export const ORIGINS = ['whatsapp', 'telefone', 'presencial'];
 
 const START_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/;
 
@@ -39,7 +40,7 @@ export function parseManualBooking(body) {
   }
 
   if (!ORIGINS.includes(body.origin)) {
-    throw new HttpError(400, 'Escolha por onde a cliente marcou: WhatsApp, Instagram Direct, telefone ou presencial.');
+    throw new HttpError(400, 'Escolha por onde a cliente marcou: WhatsApp, telefone ou presencial.');
   }
 
   if (body.notes !== undefined && body.notes !== null && typeof body.notes !== 'string') {

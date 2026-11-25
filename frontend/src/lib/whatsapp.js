@@ -24,7 +24,7 @@ export function confirmationMessage(booking, { siteUrl, cancelMinHours }) {
   const cancelRule = cancelMinHours > 0 ? ` (até ${cancelMinHours} h antes)` : '';
 
   return [
-    `Olá, ${firstName}! Aqui é da Lapidare Beauty.`,
+    `Olá, ${firstName}! Aqui é da Salon Beauty.`,
     '',
     'Seu horário está confirmado:',
     ...whatLines(booking),
@@ -47,7 +47,7 @@ export function reminderMessage(booking, { siteUrl }) {
   const today = booking.daysUntil === 0;
 
   return [
-    `Olá, ${firstName}! Passando para lembrar do seu horário ${today ? 'hoje' : 'amanhã'} na Lapidare Beauty:`,
+    `Olá, ${firstName}! Passando para lembrar do seu horário ${today ? 'hoje' : 'amanhã'} no Salon Beauty:`,
     '',
     ...whatLines(booking),
     `${formatLongDate(booking.date)}, às ${booking.time}`,

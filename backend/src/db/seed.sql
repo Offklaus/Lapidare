@@ -16,9 +16,9 @@ INSERT INTO services (id, category, name, description, duration_min, price_cents
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO professionals (id, name, role, sort) VALUES
-  ('pro-1', 'Profissional Um',   'Nail designer',                      10),
-  ('pro-2', 'Profissional Dois', 'Designer de sobrancelhas e cílios',  20),
-  ('pro-3', 'Profissional Três', 'Esteticista',                        30)
+  ('pro-1', 'Profissional 1',   'Nail designer',                      10),
+  ('pro-2', 'Profissional 2',   'Designer de sobrancelhas e cílios',  20),
+  ('pro-3', 'Profissional 3',   'Esteticista',                        30)
 ON CONFLICT (id) DO NOTHING;
 
 -- Quem faz o quê (por categoria do serviço).

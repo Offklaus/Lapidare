@@ -73,7 +73,7 @@ export function verifyTotp(secretBase32, code, { nowMs = Date.now(), window = 1,
 }
 
 /** Endereço que o app autenticador entende (vira o QR code). */
-export function otpauthUrl({ secret, account, issuer = 'Lapidare Beauty' }) {
+export function otpauthUrl({ secret, account, issuer = 'Salon Beauty' }) {
   const label = encodeURIComponent(`${issuer}:${account}`);
   const params = new URLSearchParams({
     secret,

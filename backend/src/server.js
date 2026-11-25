@@ -3,7 +3,7 @@ import { config } from './config.js';
 import { pool } from './db/pool.js';
 
 const server = app.listen(config.port, () => {
-  console.log(`API Lapidare em http://localhost:${config.port}`);
+  console.log(`API Salon Beauty em http://localhost:${config.port}`);
 });
 
 async function shutdown() {

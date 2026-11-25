@@ -18,9 +18,9 @@ const SERVICES = [
 ];
 
 const PROFESSIONALS = [
-  { id: 'pro-1', name: 'Profissional Um', role: 'Nail designer', specialties: ['Unhas', 'Alongamento'], photo: null },
-  { id: 'pro-2', name: 'Profissional Dois', role: 'Designer de sobrancelhas e cílios', specialties: ['Sobrancelhas', 'Cílios', 'Nanopigmentação'], photo: null },
-  { id: 'pro-3', name: 'Profissional Três', role: 'Esteticista', specialties: ['Laser', 'Sobrancelhas', 'Unhas'], photo: null },
+  { id: 'pro-1', name: 'Profissional 1', role: 'Nail designer', specialties: ['Unhas', 'Alongamento'], photo: null },
+  { id: 'pro-2', name: 'Profissional 2', role: 'Designer de sobrancelhas e cílios', specialties: ['Sobrancelhas', 'Cílios', 'Nanopigmentação'], photo: null },
+  { id: 'pro-3', name: 'Profissional 3', role: 'Esteticista', specialties: ['Laser', 'Sobrancelhas', 'Unhas'], photo: null },
 ];
 
 const OPEN = 9 * 60; // 09:00

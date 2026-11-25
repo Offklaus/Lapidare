@@ -1,5 +1,5 @@
 {
-  "name": "lapidare",
+  "name": "salon-beauty",
   "private": true,
   "description": "Comandos de produção (Render): compila o site e sobe a API, que entrega o site em / e responde em /api.",
   "scripts": {

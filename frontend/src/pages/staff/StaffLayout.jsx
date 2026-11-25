@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button, Facet } from '../../components/index.js';
 import { USE_MOCK } from '../../services/api.js';
@@ -33,6 +33,15 @@ export default function StaffLayout() {
     if (session.error?.status === 401) navigate('/equipe/entrar', { replace: true });
   }, [session.error, navigate]);
 
+  // No celular o menu é uma faixa que rola para o lado: deixa a página atual à vista (ex.: "Minha conta").
+  const { pathname } = useLocation();
+  const navRef = useRef(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector('[aria-current="page"]');
+    if (nav && active) nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - 12);
+  }, [pathname, user]);
+
   const logout = async () => {
     try {
       await staffLogout();
@@ -51,15 +60,15 @@ export default function StaffLayout() {
     <div className="site staff">
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link to="/equipe" className="brand" aria-label="Lapidare — área da equipe">
+          <Link to="/equipe" className="brand" aria-label="Salon Beauty — área da equipe">
             <Facet size={28} />
             <span className="brand__name">
-              <span className="brand__word">LAPIDARE</span>
+              <span className="brand__word">SALON</span>
               <span className="brand__sub">EQUIPE</span>
             </span>
           </Link>
           {user ? (
-            <nav className="site-nav staff-nav-links" aria-label="Área da equipe">
+            <nav ref={navRef} className="site-nav staff-nav-links" aria-label="Área da equipe">
               <NavLink to="/equipe" end className="site-nav__link">
                 Agenda
               </NavLink>

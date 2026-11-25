@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { pool, query } from '../db/pool.js';
 import { audit } from '../lib/audit.js';
 import { HttpError } from '../lib/errors.js';
+import { verifyGoogleCredential } from '../lib/google.js';
 import { MAX_PASSWORD_LENGTH, checkPasswordStrength, hashPassword, verifyPassword } from '../lib/password.js';
 import { rateLimit } from '../lib/rateLimit.js';
 import { hasSecretKey, open, seal } from '../lib/secretBox.js';
@@ -20,6 +21,7 @@ import {
   sessionCookieOptions,
   startSession,
 } from '../lib/staffAuth.js';
+import { staffForGoogle } from '../lib/staffGoogle.js';
 import { generateSecret, otpauthUrl, verifyTotp } from '../lib/totp.js';
 
 export const staffLoginRouter = Router();
@@ -163,6 +165,35 @@ staffLoginRouter.post(
       await client.query('DELETE FROM staff_login_challenges WHERE user_id = $1', [row.id]);
       await client.query('COMMIT');
       user = { ...row, totp_enabled_at: row.totp_enabled_at || new Date() };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    await startSession(res, user);
+    res.json({ user: publicStaff(user) });
+  },
+);
+
+/**
+ * POST /staff/login/google { credential } (ID token do botão do Google) → { user } + cookie de sessão.
+ * Só para contas que uma admin cadastrou em Usuários. Entra direto, sem o código do app autenticador
+ * (decisão do salão: a proteção fica na conta Google da pessoa). E-mail e senha continuam valendo.
+ */
+staffLoginRouter.post(
+  '/login/google',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Muitas tentativas de login. Espere alguns minutos.' }),
+  async (req, res) => {
+    const profile = await verifyGoogleCredential(req.body?.credential);
+
+    let user;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      user = await staffForGoogle(profile, client);
+      await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
       throw err;

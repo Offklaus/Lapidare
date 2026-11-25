@@ -22,6 +22,40 @@
 
 .staff-nav-links { margin-right: auto; margin-left: var(--space-5); }
 
+/* Até 960px o menu não cabe ao lado do logo e de quem está logada (a página "vazava" para o lado):
+   logo e Sair na primeira linha; o menu numa faixa embaixo, na largura toda, que rola para o lado
+   quando os itens não cabem (celular), sem barra de rolagem */
+@media (max-width: 960px) {
+  .staff .site-header__inner { flex-wrap: wrap; row-gap: 0; padding-top: var(--space-3); padding-bottom: 0; min-height: 0; }
+  .staff-user { margin-left: auto; }
+  .staff-nav-links {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+    margin: 0 0 0 calc(-1 * var(--space-3));
+    padding-bottom: var(--space-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .staff-nav-links::-webkit-scrollbar { display: none; }
+  .staff-nav-links .site-nav__link { flex: none; white-space: nowrap; }
+}
+
+@media (max-width: 479px) {
+  /* Borda direita esmaecida: mostra que tem mais itens para o lado */
+  .staff-nav-links {
+    padding-right: var(--space-6);
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+    mask-image: linear-gradient(to right, #000 85%, transparent);
+  }
+}
+
+/* Tela de toque (tablet em qualquer largura): controles da agenda com 44px */
+@media (pointer: coarse) {
+  .staff-segment button,
+  .staff-select { min-height: 44px; }
+}
+
 /* Profissionais (admin) */
 .staff-pros {
   display: flex;
@@ -243,6 +277,23 @@
 
 .staff-login__card h1 { margin-bottom: var(--space-2); }
 
+/* Atalho de admin só no desenvolvimento: caixa tracejada, separada do login de verdade */
+.staff-dev-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+}
+
+/* Entrar com Google, abaixo do login com senha, separado por "ou" */
+.staff-login__google { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+.staff-login__or { display: flex; align-items: center; gap: var(--space-3); width: 100%; }
+.staff-login__or::before,
+.staff-login__or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
 .staff-login form {
   display: flex;
   flex-direction: column;
@@ -452,9 +503,6 @@
 }
 
 @media (max-width: 560px) {
-  /* Celular: logo e "Sair" na primeira linha, Agenda/Profissionais embaixo */
-  .staff-nav-links { order: 3; margin-left: calc(-1 * var(--space-3)); }
-
   /* Agenda: controles ocupam a largura; 16px no seletor evita o zoom automático do iPhone */
   .staff-page { padding-top: var(--space-5); gap: var(--space-4); }
   .staff-toolbar { width: 100%; }

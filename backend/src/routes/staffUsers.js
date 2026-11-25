@@ -27,6 +27,7 @@ const ROLES = ['admin', 'professional'];
 const USER_SELECT = `
   SELECT u.id, u.name, u.email, u.role, u.professional_id, p.name AS professional_name, u.active,
          u.password_hash IS NOT NULL AS has_password, u.totp_enabled_at IS NOT NULL AS two_factor,
+         u.google_sub IS NOT NULL AS has_google,
          u.last_login_at, u.created_at,
          (SELECT max(t.expires_at) FROM staff_tokens t
            WHERE t.user_id = u.id AND t.used_at IS NULL AND t.expires_at > now()) AS link_expires_at
@@ -42,8 +43,10 @@ const toUser = (u) => ({
   professionalId: u.professional_id,
   professionalName: u.professional_name,
   active: u.active,
-  status: !u.active ? 'inactive' : u.has_password ? 'active' : 'invited',
+  // Ativa = já consegue entrar (criou senha ou conectou a conta Google).
+  status: !u.active ? 'inactive' : u.has_password || u.has_google ? 'active' : 'invited',
   twoFactor: u.two_factor,
+  google: u.has_google,
   lastLoginAt: u.last_login_at,
   createdAt: u.created_at,
   linkExpiresAt: u.link_expires_at,
@@ -307,6 +310,27 @@ staffUsersRouter.post('/users/:id/reset-2fa', requireAdmin, async (req, res) => 
     );
     await revokeStaffSessions(id, { db });
     await audit({ actorId: req.staff.id, action: '2fa_reset', targetUserId: id }, db);
+  });
+
+  res.json({ user: toUser(await loadUser(id)) });
+});
+
+/**
+ * POST /staff/users/:id/unlink-google → { user } — a conta Google conectada deixa de entrar e a pessoa sai
+ * de todos os aparelhos. Se o e-mail da conta continuar sendo de uma conta Google, ela pode conectar de novo
+ * no próximo login com Google (para bloquear de vez, desative a conta).
+ */
+staffUsersRouter.post('/users/:id/unlink-google', requireAdmin, async (req, res) => {
+  const id = parseUserId(req.params.id);
+  if (id === req.staff.id) throw new HttpError(400, 'Peça a outra admin para desconectar a sua conta Google.');
+
+  await inTransaction(async (db) => {
+    const { rows } = await db.query('SELECT google_sub FROM staff_users WHERE id = $1 FOR UPDATE', [id]);
+    if (!rows.length) throw new HttpError(404, 'Usuário não encontrado.');
+    if (!rows[0].google_sub) throw new HttpError(400, 'Esta conta não tem uma conta Google conectada.');
+    await db.query('UPDATE staff_users SET google_sub = NULL, updated_at = now() WHERE id = $1', [id]);
+    await revokeStaffSessions(id, { db });
+    await audit({ actorId: req.staff.id, action: 'google_unlinked', targetUserId: id }, db);
   });
 
   res.json({ user: toUser(await loadUser(id)) });

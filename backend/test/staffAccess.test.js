@@ -33,11 +33,17 @@ describe('acesso da equipe', { skip }, () => {
     await t?.close();
   });
 
+  test('atalho de admin do desenvolvimento desligado (padrão): a rota nem existe, pede login e não abre sessão', async () => {
+    const res = await t.call('POST', '/staff/dev-login');
+    assert.equal(res.status, 401); // como qualquer endereço da equipe sem sessão
+    assert.equal(t.cookieOf(res), null);
+  });
+
   test('admin precisa do 2FA: cadastra o app no primeiro login; sem o código não há sessão', async () => {
     const first = await t.call('POST', '/staff/login', { body: { email: ADMIN.email, password: ADMIN.password } });
     assert.equal(first.status, 200);
     assert.equal(first.body.twoFactor, 'enroll');
-    assert.match(first.body.otpauthUrl, /^otpauth:\/\/totp\/Lapidare%20Beauty/);
+    assert.match(first.body.otpauthUrl, /^otpauth:\/\/totp\/Salon%20Beauty/);
     assert.equal(t.cookieOf(first), null, 'senha certa ainda não abre sessão');
     assert.equal((await t.call('GET', '/staff/me')).status, 401);
 
